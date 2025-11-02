@@ -410,7 +410,13 @@ avg_confidence_when_wrong: float = 0.0
 
 def _room_features_ultra_ai(rid: int):
     """
-    Phân tích đặc trưng phòng với ULTRA AI - nhiều features hơn rất nhiều.
+    Phân tích đặc trưng phòng với ULTRA AI - PHÂN TÍCH TƯ DUY THẬT SỰ.
+    
+    NGUYÊN TẮC PHÂN TÍCH:
+    1. Phòng có NHIỀU người/tiền = NGUY HIỂM (bẫy)
+    2. Phòng có ÍT người/tiền = AN TOÀN (ít bị kill)
+    3. Đi NGƯỢC lại đám đông = Thông minh
+    4. Phân tích PATTERNS thực tế, không theo trends
     """
     st = room_state.get(rid, {})
     stats = room_stats.get(rid, {})
@@ -418,105 +424,205 @@ def _room_features_ultra_ai(rid: int):
     bet = float(st.get("bet", 0))
     bet_per_player = (bet / players) if players > 0 else bet
 
-    # Basic normalized features
-    players_norm = min(1.0, players / 50.0)
-    bet_norm = 1.0 / (1.0 + bet / 2000.0)
-    bpp_norm = 1.0 / (1.0 + bet_per_player / 1200.0)
+    # ⚠️ LOGIC MỚI: NGƯỢC LẠI - Nhiều người/tiền = NGUY HIỂM!
+    # Phòng có ÍT người = AN TOÀN hơn (score cao)
+    players_safety = 1.0 - min(1.0, players / 50.0)  # Ít người = score cao
+    
+    # Phòng có ÍT tiền cược = AN TOÀN hơn (score cao)
+    bet_safety = 1.0 - min(1.0, bet / 5000.0)  # Ít cược = score cao
+    
+    # Cược trên đầu người thấp = an toàn
+    bpp_safety = 1.0 - min(1.0, bet_per_player / 1500.0)  # BPP thấp = score cao
 
-    # Statistical features
+    # Statistical features - LỊCH SỬ PHÒNG
     kill_count = float(stats.get("kills", 0))
     survive_count = float(stats.get("survives", 0))
-    kill_rate = (kill_count + 0.5) / (kill_count + survive_count + 1.0)
+    total_appearances = kill_count + survive_count
+    
+    # Kill rate: tỷ lệ phòng bị kill
+    kill_rate = (kill_count + 0.5) / (total_appearances + 1.0)
     survive_score = 1.0 - kill_rate
+    
+    # 🧠 TƯ DUY: Phòng có kill_rate CAO trong quá khứ = NGUY HIỂM
+    historical_danger = kill_rate  # 0.0-1.0, càng cao càng nguy hiểm
 
     # Recent history analysis (12 ván gần nhất)
     recent_history = list(bet_history)[-12:]
-    recent_pen = 0.0
+    recent_kills = 0
+    recent_survives = 0
     room_appearances = 0
+    
     for i, rec in enumerate(reversed(recent_history)):
         if rec.get("room") == rid:
-            recent_pen += 0.12 * (1.0 / (i + 1))
             room_appearances += 1
+            # Kiểm tra phòng này có bị kill không
+            result = rec.get("result", "")
+            if "Thua" in str(result):  # Thua = phòng bị kill
+                recent_kills += 1
+            elif "Thắng" in str(result):
+                recent_survives += 1
+    
+    # Recent kill rate (12 ván gần nhất)
+    recent_kill_rate = recent_kills / max(1, room_appearances) if room_appearances > 0 else 0.5
+    
+    # 🧠 TƯ DUY: Phòng vừa bị kill nhiều = TRÁNH
+    recent_danger = recent_kill_rate
 
-    # Last kill penalty
+    # Last kill penalty - TĂNG GẤP ĐÔI
     last_pen = 0.0
     if last_killed_room == rid:
-        last_pen = 0.35 if SELECTION_CONFIG.get("avoid_last_kill", True) else 0.0
+        last_pen = 0.7  # Tăng từ 0.35 lên 0.7 - TRÁNH phòng vừa bị kill
 
-    # Hot/Cold analysis
-    hot_score = max(0.0, survive_score - 0.2)
-    cold_score = max(0.0, kill_rate - 0.4)
+    # Hot/Cold analysis - ĐÚNG NGHĨA
+    # HOT = Phòng đang "nóng" (nhiều người chơi) = NGUY HIỂM
+    # COLD = Phòng đang "lạnh" (ít người chơi) = AN TOÀN
+    is_hot = players > 15 or bet > 3000  # Phòng "nóng"
+    is_cold = players < 5 or bet < 500   # Phòng "lạnh"
+    
+    hot_penalty = 0.5 if is_hot else 0.0  # Penalty cho phòng nóng
+    cold_bonus = 0.5 if is_cold else 0.0  # Bonus cho phòng lạnh
 
-    # === ULTRA AI FEATURES ===
+    # === ULTRA AI FEATURES - TƯ DUY THẬT SỰ ===
     
-    # Pattern strength (dựa trên tần suất xuất hiện trong history)
-    pattern_strength = 1.0 - (room_appearances / max(1, len(recent_history)))
+    # 🧠 CONTRARIAN THINKING: Đi ngược đám đông
+    # Nếu phòng này xuất hiện NHIỀU trong history = Nhiều người chọn = TRÁNH
+    crowd_following = room_appearances / max(1, len(recent_history))
+    contrarian_score = 1.0 - crowd_following  # Càng ít người chọn = score càng cao
     
-    # Sequence correlation (phòng này có xu hướng theo sau phòng nào?)
-    sequence_correlation = 0.5
-    if len(recent_history) >= 2:
-        prev_room = recent_history[-1].get("room")
-        if prev_room:
-            # Tính xác suất phòng này xuất hiện sau prev_room
-            seq_pattern = f"{prev_room}->{rid}"
-            if seq_pattern in SEQUENCE_MEMORY:
-                mem = SEQUENCE_MEMORY[seq_pattern]
-                total = mem["wins"] + mem["losses"]
-                if total > 0:
-                    sequence_correlation = mem["wins"] / total
+    # 🧠 CROWD AVOIDANCE: Tránh phòng đông người
+    # Tính xem phòng này có phải "honeypot" (bẫy) không
+    is_honeypot = (players > 12 and bet > 2000) or (players > 20)
+    honeypot_penalty = 0.8 if is_honeypot else 0.0
     
-    # Momentum score (xu hướng gần đây)
-    momentum = 0.5
+    # Sequence correlation - Phân tích THỰC TẾ
+    # Tìm phòng nào THƯỜNG AN TOÀN sau phòng vừa bị kill
+    sequence_safety = 0.5
+    if len(recent_history) >= 2 and last_killed_room is not None:
+        # Xem sau khi last_killed_room bị kill, phòng này có an toàn không
+        seq_pattern = f"{last_killed_room}->{rid}"
+        if seq_pattern in SEQUENCE_MEMORY:
+            mem = SEQUENCE_MEMORY[seq_pattern]
+            total = mem["wins"] + mem["losses"]
+            if total >= 3:  # Chỉ tin nếu có đủ data
+                # Wins = phòng này an toàn sau khi last_killed_room bị kill
+                sequence_safety = mem["wins"] / total
+    
+    # 🧠 MOMENTUM ANALYSIS: Xu hướng gần đây
     recent_5 = list(bet_history)[-5:]
     recent_kills_here = sum(1 for r in recent_5 if r.get("room") == rid and "Thua" in r.get("result", ""))
-    if len(recent_5) > 0:
-        momentum = 1.0 - (recent_kills_here / len(recent_5))
+    recent_safe_here = sum(1 for r in recent_5 if r.get("room") == rid and "Thắng" in r.get("result", ""))
     
-    # Variance in betting (độ biến động cược)
-    bet_variance = 0.0
-    if len(recent_history) >= 3:
-        room_bets = [float(r.get("amount", 0)) for r in recent_history[-6:] if r.get("room") == rid]
-        if len(room_bets) >= 2:
-            mean_bet = sum(room_bets) / len(room_bets)
-            variance = sum((b - mean_bet) ** 2 for b in room_bets) / len(room_bets)
-            bet_variance = min(1.0, variance / 1000.0)
+    if recent_kills_here > 0:
+        # Phòng vừa bị kill gần đây = NGUY HIỂM
+        momentum_safety = 0.2
+    elif recent_safe_here > 0:
+        # Phòng vừa an toàn = Có thể vẫn an toàn
+        momentum_safety = 0.7
+    else:
+        # Chưa có data
+        momentum_safety = 0.5
     
-    # Cycle detection (phòng này có chu kỳ không?)
-    cycle_score = 0.5
+    # 🧠 BAYESIAN THINKING: Cập nhật xác suất dựa trên evidence
+    # Prior: Giả định ban đầu là mỗi phòng có 1/8 = 12.5% bị kill
+    prior_danger = 1.0 / 8.0  # 0.125
+    
+    # Evidence: Phòng này có nhiều người/tiền = tăng xác suất bị kill
+    evidence_danger = 0.0
+    if players > 15:
+        evidence_danger += 0.2
+    if bet > 3000:
+        evidence_danger += 0.2
+    if players > 20:
+        evidence_danger += 0.3
+    if bet > 5000:
+        evidence_danger += 0.3
+    
+    # Posterior: Kết hợp prior và evidence
+    bayesian_danger = min(0.95, prior_danger + evidence_danger)
+    bayesian_safety = 1.0 - bayesian_danger
+    
+    # Cycle detection - LOGIC ĐÚNG
+    cycle_danger = 0.5
     last_kill_round = stats.get("last_kill_round")
     if last_kill_round is not None and round_index > last_kill_round:
         rounds_since = round_index - last_kill_round
-        # Phòng càng lâu không bị kill, càng nguy hiểm
-        cycle_score = min(1.0, rounds_since / 20.0)
+        # 🧠 TƯ DUY: Phòng càng LÂU không bị kill = càng GẦN đến lượt bị kill
+        # Nhưng cũng có thể là phòng an toàn
+        if rounds_since > 10:
+            cycle_danger = 0.6  # Có thể sắp đến lượt
+        elif rounds_since > 5:
+            cycle_danger = 0.5
+        else:
+            cycle_danger = 0.3  # Vừa mới bị kill = ít khả năng bị kill liên tiếp
     
     # Confidence from pattern memory
     current_pattern = _generate_pattern_signature(recent_history)
     pattern_confidence = _calculate_pattern_confidence(current_pattern)
     
-    # Risk assessment (đánh giá rủi ro tổng hợp)
-    risk_factors = [kill_rate, recent_pen / 2.0, last_pen, 1.0 - pattern_confidence]
-    risk_score = sum(risk_factors) / len(risk_factors)
-    safety_score = 1.0 - risk_score
+    # 🧠 RISK ASSESSMENT - TƯ DUY ĐA CHIỀU
+    risk_factors = [
+        historical_danger * 0.2,      # Lịch sử kill rate
+        recent_danger * 0.25,         # Kill rate gần đây
+        last_pen,                     # Vừa bị kill
+        honeypot_penalty,             # Bẫy đám đông
+        hot_penalty * 0.3,            # Phòng "nóng"
+        bayesian_danger * 0.2,        # Xác suất Bayesian
+        (1.0 - pattern_confidence) * 0.15,  # Pattern không chắc chắn
+    ]
+    risk_score = min(1.0, sum(risk_factors))
+    
+    # 🧠 SAFETY SCORE - KẾT HỢP NHIỀU YẾU TỐ
+    safety_factors = [
+        players_safety * 0.25,        # Ít người = an toàn
+        bet_safety * 0.25,            # Ít tiền = an toàn
+        survive_score * 0.15,         # Lịch sử sống sót
+        contrarian_score * 0.15,      # Đi ngược đám đông
+        cold_bonus,                   # Phòng "lạnh"
+        bayesian_safety * 0.1,        # Bayesian
+        sequence_safety * 0.1,        # Sequence patterns
+        momentum_safety * 0.1,        # Momentum
+    ]
+    safety_score = min(1.0, sum(safety_factors))
 
     return {
-        # Basic features
-        "players_norm": players_norm,
-        "bet_norm": bet_norm,
-        "bpp_norm": bpp_norm,
-        "survive_score": survive_score,
-        "recent_pen": recent_pen,
-        "last_pen": last_pen,
-        "hot_score": hot_score,
-        "cold_score": cold_score,
-        # ULTRA AI features
-        "pattern_strength": pattern_strength,
-        "sequence_correlation": sequence_correlation,
-        "momentum": momentum,
-        "bet_variance": bet_variance,
-        "cycle_score": cycle_score,
-        "pattern_confidence": pattern_confidence,
-        "safety_score": safety_score,
-        "risk_score": risk_score,
+        # NEW LOGIC - Counterintuitive (Đi ngược đám đông)
+        "players_safety": players_safety,      # ÍT người = AN TOÀN
+        "bet_safety": bet_safety,              # ÍT tiền = AN TOÀN
+        "bpp_safety": bpp_safety,              # BPP thấp = AN TOÀN
+        "contrarian_score": contrarian_score,  # Đi ngược = THÔNG MINH
+        "honeypot_penalty": honeypot_penalty,  # Bẫy đám đông
+        "hot_penalty": hot_penalty,            # Phòng nóng = NGUY HIỂM
+        "cold_bonus": cold_bonus,              # Phòng lạnh = AN TOÀN
+        
+        # Historical analysis
+        "survive_score": survive_score,        # Lịch sử sống sót
+        "historical_danger": historical_danger, # Kill rate lịch sử
+        "recent_danger": recent_danger,        # Kill rate gần đây
+        
+        # Advanced analysis
+        "bayesian_safety": bayesian_safety,    # Xác suất Bayesian
+        "sequence_safety": sequence_safety,    # Patterns sau kill
+        "momentum_safety": momentum_safety,    # Xu hướng momentum
+        "cycle_danger": cycle_danger,          # Chu kỳ kill
+        "pattern_confidence": pattern_confidence,  # Tin cậy pattern
+        
+        # Penalties
+        "last_pen": last_pen,                  # Vừa bị kill (x2)
+        
+        # Final scores
+        "safety_score": safety_score,          # Tổng hợp an toàn
+        "risk_score": risk_score,              # Tổng hợp rủi ro
+        
+        # Legacy (backward compatibility)
+        "players_norm": 1.0 - players_safety,  # Đảo ngược logic
+        "bet_norm": 1.0 - bet_safety,
+        "bpp_norm": 1.0 - bpp_safety,
+        "recent_pen": recent_danger,
+        "hot_score": cold_bonus,               # Đổi tên: cold = good
+        "cold_score": hot_penalty,             # hot = bad
+        "pattern_strength": contrarian_score,
+        "sequence_correlation": sequence_safety,
+        "momentum": momentum_safety,
     }
 
 # Backward compatibility
@@ -693,23 +799,41 @@ def choose_room(mode: str = "ULTRA_AI") -> Tuple[int, str]:
             f = _room_features_ultra_ai(r)
             score = 0.0
             
-            # Basic features
-            score += weights.get("players", 0.0) * f["players_norm"]
-            score += weights.get("bet", 0.0) * f["bet_norm"]
-            score += weights.get("bpp", 0.0) * f["bpp_norm"]
-            score += weights.get("survive", 0.0) * f["survive_score"]
-            score -= weights.get("recent", 0.0) * f["recent_pen"]
-            score -= weights.get("last", 0.0) * f["last_pen"]
-            score += weights.get("hot", 0.0) * f["hot_score"]
-            score -= weights.get("cold", 0.0) * f["cold_score"]
+            # 🧠 NEW LOGIC - COUNTERINTUITIVE (Đi ngược đám đông)
+            # Phòng ÍT người/tiền = ĐIỂM CAO
+            score += weights.get("players", 0.0) * f["players_safety"]
+            score += weights.get("bet", 0.0) * f["bet_safety"]
+            score += weights.get("bpp", 0.0) * f["bpp_safety"]
             
-            # ULTRA AI features
-            score += weights.get("pattern", 0.0) * f["pattern_strength"]
-            score += weights.get("sequence", 0.0) * f["sequence_correlation"]
-            score += weights.get("momentum", 0.0) * f["momentum"]
-            score += weights.get("pattern", 0.0) * f["pattern_confidence"] * 0.5
-            score += weights.get("survive", 0.0) * f["safety_score"] * 0.3
-            score -= weights.get("recent", 0.0) * f["risk_score"] * 0.2
+            # Đi ngược đám đông = THÔNG MINH
+            score += weights.get("pattern", 0.0) * f["contrarian_score"] * 2.0
+            
+            # Phòng LẠNH = AN TOÀN
+            score += weights.get("hot", 0.0) * f["cold_bonus"] * 1.5
+            
+            # Penalties cho phòng NÓNG
+            score -= weights.get("cold", 0.0) * f["hot_penalty"] * 1.5
+            score -= f["honeypot_penalty"] * 0.5
+            
+            # Historical & Recent
+            score += weights.get("survive", 0.0) * f["survive_score"]
+            score -= f["historical_danger"] * 0.3
+            score -= f["recent_danger"] * 0.4
+            
+            # Bayesian & Advanced
+            score += f["bayesian_safety"] * 0.4
+            score += weights.get("sequence", 0.0) * f["sequence_safety"]
+            score += weights.get("momentum", 0.0) * f["momentum_safety"]
+            
+            # Pattern confidence
+            score += weights.get("pattern", 0.0) * f["pattern_confidence"] * 0.3
+            
+            # Penalties
+            score -= weights.get("last", 0.0) * f["last_pen"]  # Đã tăng x2
+            
+            # Final safety/risk
+            score += f["safety_score"] * 0.5
+            score -= f["risk_score"] * 0.5
             
             # Deterministic noise
             noise = (math.sin((idx + 1) * (r + 1) * 12.9898) * 43758.5453) % 1.0
