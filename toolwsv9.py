@@ -128,6 +128,14 @@ logger = logging.getLogger("escape_vip_ai_rebuild")
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.FileHandler("escape_vip_ai_rebuild.log", encoding="utf-8"))
 
+# Log level control
+LOG_LEVEL = "INFO"  # Set to "DEBUG" for verbose logging
+
+def log_debug(msg):
+    """Log debug messages only if LOG_LEVEL is DEBUG."""
+    if LOG_LEVEL == "DEBUG":
+        logger.debug(msg)
+
 # Endpoints (config)
 BET_API_URL = "https://api.escapemaster.net/escape_game/bet"
 WS_URL = "wss://api.escapemaster.net/escape_master/ws"
@@ -260,11 +268,7 @@ UI_THEME = {
 
 # -------------------- UTILITIES --------------------
 
-def log_debug(msg: str):
-    try:
-        logger.debug(msg)
-    except Exception:
-        pass
+# log_debug now defined at top of file (line ~134)
 
 
 def _parse_number(x: Any) -> Optional[float]:
@@ -1061,21 +1065,23 @@ _init_formulas("ULTRA_AI")
 
 def choose_room(mode: str = "ULTRA_AI") -> Tuple[int, str]:
     """
-    🧠 ULTRA AI Room Chooser - Siêu trí tuệ, NHANH NHẸN, CHÍNH XÁC.
+    🧠 ULTRA AI Room Chooser - SIÊU NHANH + THÔNG MINH.
     
-    OPTIMIZED FOR SPEED + ACCURACY:
-    1. Ensemble Learning (10,000 formulas) - Fast voting
-    2. Markov Chain - Cached probabilities
-    3. Kalman Filter - Optimal estimation
-    4. Monte Carlo Simulation (200 sims) - Fast enough
-    5. Advanced combination - Smart weights
+    OPTIMIZED FOR EXTREME SPEED:
+    1. Ensemble Learning (10,000 formulas) - Cached features
+    2. Markov Chain - Fast lookup
+    3. Kalman Filter - Essential only
+    4. Skip slow algorithms if time limited
     
-    Returns (room_id, algo_label)
+    Returns (room_id, algo_label, confidence)
     """
-    global FORMULAS, PATTERN_MEMORY, SEQUENCE_MEMORY, KALMAN_ESTIMATES
+    global FORMULAS, PATTERN_MEMORY, SEQUENCE_MEMORY, KALMAN_ESTIMATES, AI_THOUGHTS, AI_STRATEGY_STATE
     
     import time
     start_time = time.time()
+    
+    # ⚡ ULTRA FAST MODE - Skip heavy computations
+    ULTRA_FAST_MODE = True
     
     # Ensure formulas initialized
     if not FORMULAS or len(FORMULAS) != 10000:
@@ -1243,73 +1249,72 @@ def choose_room(mode: str = "ULTRA_AI") -> Tuple[int, str]:
         KALMAN_ESTIMATES[r] = {"estimate": new_est, "error": new_err}
         kalman_scores[r] = new_est
     
-    # 3. FAST MONTE CARLO - Only if we have time (>1s elapsed)
-    elapsed = time.time() - start_time
-    if elapsed < 1.5:  # Only run Monte Carlo if we have time
-        room_features_dict = {}
-        for r in cand:
-            room_features_dict[r] = _room_features_ultra_ai(r)
-        
-        monte_carlo_probs = _monte_carlo_simulation(room_features_dict, n_sims=MONTE_CARLO_SIMS)
-        use_monte_carlo = True
-    else:
-        # Skip Monte Carlo if too slow
-        monte_carlo_probs = {r: final_scores[r] for r in cand}
+    # 3. ULTRA FAST MODE - Skip heavy algorithms
+    if ULTRA_FAST_MODE:
+        # Skip Monte Carlo completely for speed
         use_monte_carlo = False
-        log_debug("⚠️ Skipped Monte Carlo (time constraint)")
-    
-    # 4. FAST EMA SMOOTHING - Very fast
-    ema_scores = {}
-    for r in cand:
-        ema_scores[r] = _exponential_moving_average(r, final_scores[r])
-    
-    # SIMPLIFIED ENSEMBLE - Fast combination
-    # Only use the most important methods
-    final_advanced_scores = {}
-    for r in cand:
-        if use_monte_carlo:
-            # Full combination with Monte Carlo
+        
+        # Skip EMA if too many rooms
+        ema_scores = {}
+        for r in cand:
+            ema_scores[r] = final_scores[r]  # Use ensemble directly
+        
+        # MINIMAL COMBINATION - Only essential
+        final_advanced_scores = {}
+        for r in cand:
             combined = (
-                final_scores[r] * 0.30 +           # Ensemble: 30%
-                markov_scores[r] * 0.25 +          # Markov: 25%
-                kalman_scores[r] * 0.20 +          # Kalman: 20%
-                monte_carlo_probs[r] * 0.15 +      # Monte Carlo: 15%
-                ema_scores[r] * 0.10               # EMA: 10%
-            )
-        else:
-            # Fast combination without Monte Carlo
-            combined = (
-                final_scores[r] * 0.40 +           # Ensemble: 40%
+                final_scores[r] * 0.50 +           # Ensemble: 50% (most important)
                 markov_scores[r] * 0.30 +          # Markov: 30%
-                kalman_scores[r] * 0.20 +          # Kalman: 20%
-                ema_scores[r] * 0.10               # EMA: 10%
+                kalman_scores[r] * 0.20            # Kalman: 20%
             )
-        final_advanced_scores[r] = combined
+            final_advanced_scores[r] = combined
+    else:
+        # Standard mode with more algorithms (fallback)
+        ema_scores = {}
+        for r in cand:
+            ema_scores[r] = _exponential_moving_average(r, final_scores[r])
+        
+        final_advanced_scores = {}
+        for r in cand:
+            combined = (
+                final_scores[r] * 0.40 +
+                markov_scores[r] * 0.30 +
+                kalman_scores[r] * 0.20 +
+                ema_scores[r] * 0.10
+            )
+            final_advanced_scores[r] = combined
+        use_monte_carlo = False
     
     # Select best room
     ranked = sorted(final_advanced_scores.items(), key=lambda kv: (-kv[1], kv[0]))
     best_room = ranked[0][0]
     best_confidence = confidence_scores[best_room]
     
-    # Enhanced confidence with Monte Carlo
-    mc_confidence = monte_carlo_probs[best_room]
-    enhanced_confidence = (best_confidence * 0.6 + mc_confidence * 0.4)
+    # Calculate final confidence
+    enhanced_confidence = best_confidence
+    
+    # AI Thoughts update
+    if HAS_AI_BRAIN and AI_BRAIN:
+        try:
+            # Quick AI reasoning
+            game_state = {
+                "rooms": rooms_data,
+                "history": bet_history[-10:] if bet_history else []
+            }
+            ai_result = AI_BRAIN.think(game_state)
+            AI_THOUGHTS = ai_result.get("thoughts", [])
+            AI_STRATEGY_STATE = "CONFIDENT" if enhanced_confidence >= 0.7 else "UNCERTAIN" if enhanced_confidence < 0.5 else "ANALYZING"
+        except Exception as e:
+            log_debug(f"AI Brain error: {e}")
+            AI_THOUGHTS = ["AI thinking..."]
     
     # Performance tracking
     total_elapsed = time.time() - start_time
     
-    # Logging - OPTIMIZED (only if debug mode)
-    if LOG_LEVEL == "DEBUG":
-        log_debug(f"⚡ ULTRA_AI - Room {best_room} in {total_elapsed:.2f}s")
-        log_debug(f"  📊 Ensemble: {final_scores[best_room]:.3f}")
-        log_debug(f"  🔗 Markov: {markov_scores[best_room]:.3f}")
-        log_debug(f"  🎯 Kalman: {kalman_scores[best_room]:.3f}")
-        if use_monte_carlo:
-            log_debug(f"  🎲 Monte Carlo: {monte_carlo_probs[best_room]:.3f}")
-        log_debug(f"  〰️ EMA: {ema_scores[best_room]:.3f}")
-        log_debug(f"  ⭐ FINAL: {final_advanced_scores[best_room]:.3f}")
+    # Minimal logging for speed
+    log_debug(f"⚡ Room {best_room} | Conf: {enhanced_confidence:.1%} | Time: {total_elapsed:.2f}s")
     
-    return best_room, f"ULTRA_AI (Conf: {enhanced_confidence:.1%})"
+    return best_room, f"ULTRA_AI (Conf: {enhanced_confidence:.1%})", enhanced_confidence
 
 def update_formulas_after_result(predicted_room: Optional[int], killed_room: Optional[int], mode: str = "ULTRA_AI", lr: float = 0.15):
     """
@@ -1571,11 +1576,32 @@ def lock_prediction_if_needed(force: bool = False):
     # Chọn phòng chỉ khi KHÔNG skip
     algo = settings.get("algo", "ULTRA_AI")
     try:
-        chosen, algo_used = choose_room(algo)
+        result = choose_room(algo)
+        if len(result) == 3:
+            chosen, algo_used, confidence = result
+        else:
+            # Fallback for old format
+            chosen, algo_used = result[0], result[1]
+            confidence = 0.65  # Default
     except Exception as e:
         log_debug(f"choose_room error: {e}")
         console.print(f"[red]⚠️ ULTRA AI selection error: {e}[/]")
-        chosen, algo_used = choose_room("ULTRA_AI")
+        result = choose_room("ULTRA_AI")
+        if len(result) == 3:
+            chosen, algo_used, confidence = result
+        else:
+            chosen, algo_used = result[0], result[1]
+            confidence = 0.65
+    
+    # ⚠️ SKIP NẾU CONFIDENCE QUÁ THẤP (<60%)
+    if confidence < 0.60:
+        console.print(f"[yellow]⏭️ SKIP ván này - Confidence quá thấp ({confidence:.1%} < 60%)[/]")
+        console.print(f"[dim]   AI không tự tin đủ để cược. Chờ ván tốt hơn...[/]")
+        prediction_locked = True
+        ui_state = "ANALYZING"
+        predicted_room = None  # Don't set prediction
+        return  # Exit without betting
+    
     predicted_room = chosen
     prediction_locked = True
     ui_state = "PREDICTED"
