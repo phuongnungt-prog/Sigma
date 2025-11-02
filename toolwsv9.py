@@ -131,6 +131,21 @@ logger.addHandler(logging.FileHandler("escape_vip_ai_rebuild.log", encoding="utf
 # Log level control
 LOG_LEVEL = "INFO"  # Set to "DEBUG" for verbose logging
 
+# Import AI Brain (optional)
+HAS_AI_BRAIN = False
+AI_BRAIN = None
+try:
+    from ai_brain import AI_BRAIN as _AI_BRAIN
+    AI_BRAIN = _AI_BRAIN
+    HAS_AI_BRAIN = True
+except ImportError:
+    HAS_AI_BRAIN = False
+    AI_BRAIN = None
+except Exception as e:
+    HAS_AI_BRAIN = False
+    AI_BRAIN = None
+    console.print(f"[dim yellow]⚠️ AI Brain không load được: {e}[/]")
+
 def log_debug(msg):
     """Log debug messages only if LOG_LEVEL is DEBUG."""
     if LOG_LEVEL == "DEBUG":
@@ -1307,20 +1322,24 @@ def choose_room(mode: str = "ULTRA_AI") -> Tuple[int, str]:
     elif history_count < 30:
         enhanced_confidence *= 0.9  # Giảm 10% nếu kinh nghiệm trung bình
     
-    # AI Thoughts update
-    if HAS_AI_BRAIN and AI_BRAIN:
-        try:
-            # Quick AI reasoning
-            game_state = {
-                "rooms": rooms_data,
-                "history": bet_history[-10:] if bet_history else []
-            }
-            ai_result = AI_BRAIN.think(game_state)
-            AI_THOUGHTS = ai_result.get("thoughts", [])
-            AI_STRATEGY_STATE = "CONFIDENT" if enhanced_confidence >= 0.7 else "UNCERTAIN" if enhanced_confidence < 0.5 else "ANALYZING"
-        except Exception as e:
-            log_debug(f"AI Brain error: {e}")
-            AI_THOUGHTS = ["AI thinking..."]
+    # AI Thoughts update (optional, skip if AI Brain not available)
+    try:
+        if HAS_AI_BRAIN and AI_BRAIN:
+            try:
+                # Quick AI reasoning
+                game_state = {
+                    "rooms": rooms_data,
+                    "history": bet_history[-10:] if bet_history else []
+                }
+                ai_result = AI_BRAIN.think(game_state)
+                AI_THOUGHTS = ai_result.get("thoughts", [])
+                AI_STRATEGY_STATE = "CONFIDENT" if enhanced_confidence >= 0.7 else "UNCERTAIN" if enhanced_confidence < 0.5 else "ANALYZING"
+            except Exception as e:
+                log_debug(f"AI Brain error: {e}")
+                AI_THOUGHTS = ["AI thinking..."]
+    except NameError:
+        # HAS_AI_BRAIN not defined, skip
+        pass
     
     # Performance tracking
     total_elapsed = time.time() - start_time
