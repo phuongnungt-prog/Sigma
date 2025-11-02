@@ -1,4 +1,4 @@
-# toolws.py (UPGRADED) - tích hợp VIP50, VIP50+, VIP100, ADAPTIVE
+# toolws.py (OMEGA) - Omega AI siêu trí tuệ tập trung 1 chế độ
 from __future__ import annotations
 
 def show_banner():
@@ -19,6 +19,7 @@ import threading
 import random
 import logging
 import math
+import statistics
 import re
 from collections import defaultdict, deque
 from datetime import datetime
@@ -42,13 +43,14 @@ console = Console()
 # Hiển thị banner ngay khi tool chạy
 console.print(Rule("[bold yellow]KH TOOL[/]"))
 console.print("[cyan]Copyright by [bold]Duy Hoàng | Chỉnh sửa by [bold green]Khánh[/][/]")
+console.print("[bold magenta]Ω Omega AI Supreme: Một chế độ - Tối đa hóa tỷ lệ sống sót[/]")
 console.print(Rule())
 
 tz = pytz.timezone("Asia/Ho_Chi_Minh")
 
-logger = logging.getLogger("escape_vip_ai_rebuild")
+logger = logging.getLogger("omega_ai_supreme")
 logger.setLevel(logging.INFO)
-logger.addHandler(logging.FileHandler("escape_vip_ai_rebuild.log", encoding="utf-8"))
+logger.addHandler(logging.FileHandler("omega_ai_supreme.log", encoding="utf-8"))
 
 # Endpoints (config)
 BET_API_URL = "https://api.escapemaster.net/escape_game/bet"
@@ -86,11 +88,35 @@ round_index: int = 0
 _skip_active_issue: Optional[int] = None  # ván hiện tại đang nghỉ
 
 room_state: Dict[int, Dict[str, Any]] = {r: {"players": 0, "bet": 0} for r in ROOM_ORDER}
-room_stats: Dict[int, Dict[str, Any]] = {r: {"kills": 0, "survives": 0, "last_kill_round": None, "last_players": 0, "last_bet": 0} for r in ROOM_ORDER}
+room_stats: Dict[int, Dict[str, Any]] = {
+    r: {
+        "kills": 0,
+        "survives": 0,
+        "last_kill_round": None,
+        "last_players": 0,
+        "last_bet": 0,
+        "player_history": deque(maxlen=120),
+        "bet_history": deque(maxlen=120),
+        "outcome_history": deque(maxlen=120),
+    }
+    for r in ROOM_ORDER
+}
+room_outcome_history: Dict[int, deque] = {r: deque(maxlen=60) for r in ROOM_ORDER}
 
 predicted_room: Optional[int] = None
 last_killed_room: Optional[int] = None
 prediction_locked: bool = False
+prediction_confidence: float = 0.5
+formula_votes: Dict[int, int] = {}
+omega_meta: Dict[str, Any] = {
+    "win": 0,
+    "lose": 0,
+    "streak": 0,
+    "version": "omega-1.1",
+    "history": deque(maxlen=200),
+    "last_choice": None,
+    "last_confidence": prediction_confidence,
+}
 
 # balances & pnl
 current_build: Optional[float] = None
@@ -151,17 +177,15 @@ SELECTION_CONFIG = {
 }
 
 # selection modes
+SUPER_MODE = "OMEGA_AI"
+OMEGA_LABEL = "Omega AI (siêu trí tuệ)"
+OMEGA_FORMULA_COUNT = 240
+
 SELECTION_MODES = {
-    "VIP50": "50 Công thức SIU VIP",
-    "VIP50PLUS": "VIP50+ (hot/cold)",
-    "VIP100": "VIP100 (mở rộng)",
-    "ADAPTIVE": "ADAPTIVE (tự học)",
-    "VIP5000": "VIP5000 (5000 công thức)",
-    "VIP5000PLUS": "VIP5000+ (lọc AI)",
-    "VIP10000": "VIP10000 (10000 công thức)"
+    SUPER_MODE: OMEGA_LABEL,
 }
 
-settings = {"algo": "VIP50"}
+settings = {"algo": SUPER_MODE}
 
 _spinner = ["📦", "🪑", "👔", "💬", "🎥", "🏢", "💰", "👥"]
 
@@ -342,7 +366,7 @@ def fetch_balances_3games(retries=2, timeout=6, params=None, uid=None, secret=No
 
     return current_build, current_world, current_usdt
 
-# -------------------- VIP UPGRADED SELECTION (VIP50 / VIP50+ / VIP100 / ADAPTIVE) --------------------
+# -------------------- OMEGA AI SELECTION (SUPER MODE) --------------------
 
 # FORMULAS storage and generator seed
 FORMULAS: List[Dict[str, Any]] = []
@@ -351,6 +375,7 @@ FORMULA_SEED = 1234567
 def _room_features_enhanced(rid: int):
     st = room_state.get(rid, {})
     stats = room_stats.get(rid, {})
+
     players = float(st.get("players", 0))
     bet = float(st.get("bet", 0))
     bet_per_player = (bet / players) if players > 0 else bet
@@ -371,8 +396,61 @@ def _room_features_enhanced(rid: int):
             recent_pen += 0.12 * (1.0 / (i + 1))
 
     last_pen = 0.0
-    if last_killed_room == rid:
-        last_pen = 0.35 if SELECTION_CONFIG.get("avoid_last_kill", True) else 0.0
+    if last_killed_room == rid and SELECTION_CONFIG.get("avoid_last_kill", True):
+        last_pen = 0.35
+
+    outcome_hist = stats.get("outcome_history") or room_outcome_history.get(rid, deque())
+    recent_window = list(outcome_hist)[-12:]
+    survival_recent_ratio = (sum(recent_window) + 0.5) / (len(recent_window) + 1.0)
+
+    survival_streak = 0
+    for val in reversed(outcome_hist):
+        if val == 1:
+            survival_streak += 1
+        else:
+            break
+    kill_streak = 0
+    for val in reversed(outcome_hist):
+        if val == 0:
+            kill_streak += 1
+        else:
+            break
+
+    survival_streak_norm = min(survival_streak / 6.0, 1.0)
+    kill_streak_norm = min(kill_streak / 4.0, 1.0)
+    momentum = survival_streak_norm - kill_streak_norm
+
+    player_hist = list(stats.get("player_history", []))
+    bet_hist = list(stats.get("bet_history", []))
+
+    avg_players = statistics.mean(player_hist) if player_hist else players
+    avg_bet = statistics.mean(bet_hist) if bet_hist else bet
+
+    player_trend_raw = players - avg_players
+    player_trend = math.tanh(player_trend_raw / 25.0) if avg_players else 0.0
+
+    bet_pressure_raw = (bet - avg_bet) / (avg_bet + 1.0)
+    bet_pressure = math.tanh(bet_pressure_raw / 4.0)
+
+    bet_volatility = 0.0
+    if len(bet_hist) >= 3:
+        try:
+            bet_volatility = statistics.pstdev(bet_hist) / (statistics.mean(bet_hist) + 1.0)
+        except statistics.StatisticsError:
+            bet_volatility = 0.0
+    bet_volatility = min(max(bet_volatility, 0.0), 2.0)
+    volatility = math.tanh(bet_volatility)
+    stability = 1.0 - min(volatility, 0.95)
+
+    last_kill_round = stats.get("last_kill_round")
+    if last_kill_round is None:
+        kill_gap_norm = 1.0
+    else:
+        gap = max(0, round_index - int(last_kill_round))
+        kill_gap_norm = min(gap / 8.0, 1.0)
+
+    adaptive_focus = max(-1.0, min(1.0, (survival_recent_ratio - kill_rate)))
+    resilience = (sum(recent_window[-6:]) + 0.5) / (len(recent_window[-6:]) + 1.0)
 
     hot_score = max(0.0, survive_score - 0.2)
     cold_score = max(0.0, kill_rate - 0.4)
@@ -386,205 +464,117 @@ def _room_features_enhanced(rid: int):
         "last_pen": last_pen,
         "hot_score": hot_score,
         "cold_score": cold_score,
+        "kill_gap_norm": kill_gap_norm,
+        "survival_streak_norm": survival_streak_norm,
+        "kill_streak_norm": kill_streak_norm,
+        "momentum": momentum,
+        "resilience": resilience,
+        "volatility": volatility,
+        "stability": stability,
+        "bet_pressure": bet_pressure,
+        "player_trend": player_trend,
+        "adaptive_focus": adaptive_focus,
     }
 
-def _init_formulas(mode: str = "VIP50"):
+def _init_formulas(mode: str = SUPER_MODE):
     """
-    Initialize FORMULAS for the requested mode.
-    Modes supported: VIP50, VIP50PLUS, VIP100, ADAPTIVE
+    Initialize the Omega AI ensemble. Even if mode is provided, only SUPER_MODE is supported.
     """
     global FORMULAS
-    rng = random.Random(FORMULA_SEED)
-    formulas = []
+    rng = random.Random(FORMULA_SEED if mode == SUPER_MODE else FORMULA_SEED + 9999)
+    formulas: List[Dict[str, Any]] = []
 
-    def mk_formula(base_bias: Optional[str] = None):
+    def mk_formula(focus: str = "balanced") -> Dict[str, Any]:
         w = {
-            "players": rng.uniform(0.2, 0.8),
-            "bet": rng.uniform(0.1, 0.6),
-            "bpp": rng.uniform(0.05, 0.6),
-            "survive": rng.uniform(0.05, 0.4),
-            "recent": rng.uniform(0.05, 0.3),
-            "last": rng.uniform(0.1, 0.6),
-            "hot": rng.uniform(0.0, 0.35),
-            "cold": rng.uniform(0.0, 0.35),
+            "players": rng.uniform(0.15, 0.45),
+            "bet": rng.uniform(0.08, 0.28),
+            "bpp": rng.uniform(0.06, 0.32),
+            "survive": rng.uniform(0.24, 0.48),
+            "recent": rng.uniform(0.05, 0.25),
+            "last": rng.uniform(0.08, 0.3),
+            "hot": rng.uniform(0.1, 0.42),
+            "cold": rng.uniform(0.08, 0.35),
+            "kill_gap": rng.uniform(0.25, 0.6),
+            "survival_streak": rng.uniform(0.2, 0.55),
+            "kill_streak": rng.uniform(0.15, 0.45),
+            "momentum": rng.uniform(0.15, 0.4),
+            "resilience": rng.uniform(0.22, 0.5),
+            "volatility": rng.uniform(0.12, 0.28),
+            "stability": rng.uniform(0.18, 0.42),
+            "bet_pressure": rng.uniform(0.05, 0.24),
+            "player_trend": rng.uniform(0.05, 0.26),
+            "adaptive_focus": rng.uniform(0.22, 0.45),
         }
-        noise = rng.uniform(0.0, 0.08)
-        if base_bias == "hot":
-            w["hot"] += rng.uniform(0.2, 0.5)
-            w["survive"] += rng.uniform(0.05, 0.2)
-        elif base_bias == "cold":
-            w["cold"] += rng.uniform(0.2, 0.5)
-            w["last"] += rng.uniform(0.05, 0.2)
-        return {"w": w, "noise": noise, "adapt": 1.0}
 
-    if mode == "VIP50":
-        for _ in range(50):
-            formulas.append(mk_formula())
-    elif mode == "VIP50PLUS":
-        for _ in range(35):
-            formulas.append(mk_formula())
-        for _ in range(10):
-            formulas.append(mk_formula(base_bias="hot"))
-        for _ in range(5):
-            formulas.append(mk_formula(base_bias="cold"))
-    
-    
-    elif mode == "VIP5000PLUS":
-        rng = random.Random(FORMULA_SEED + 5001)
-        formulas = []
-        for _ in range(5000):
-            w = {
-                "players": rng.uniform(0.15, 0.9),
-                "bet": rng.uniform(0.05, 0.7),
-                "bpp": rng.uniform(0.02, 0.7),
-                "survive": rng.uniform(0.02, 0.5),
-                "recent": rng.uniform(0.02, 0.35),
-                "last": rng.uniform(0.05, 0.7),
-                "hot": rng.uniform(0.0, 0.45),
-                "cold": rng.uniform(0.0, 0.45),
-            }
-            noise = rng.uniform(0.0, 0.09)
-            formulas.append({"w": w, "noise": noise, "win_times": [], "loss_streak": 0})
-        FORMULAS = formulas
+        if focus == "safe":
+            w["survive"] += rng.uniform(0.3, 0.55)
+            w["resilience"] += rng.uniform(0.22, 0.38)
+            w["volatility"] += rng.uniform(0.12, 0.2)
+            w["kill_streak"] += rng.uniform(0.18, 0.28)
+        elif focus == "aggressive":
+            w["momentum"] += rng.uniform(0.25, 0.45)
+            w["player_trend"] += rng.uniform(0.3, 0.5)
+            w["bet_pressure"] += rng.uniform(0.2, 0.38)
+        elif focus == "counter":
+            w["cold"] += rng.uniform(0.3, 0.5)
+            w["last"] += rng.uniform(0.2, 0.4)
+            w["adaptive_focus"] += rng.uniform(0.25, 0.38)
+        elif focus == "streak":
+            w["survival_streak"] += rng.uniform(0.25, 0.4)
+            w["kill_gap"] += rng.uniform(0.3, 0.45)
 
-    elif mode == "VIP10000":
-        rng = random.Random(FORMULA_SEED + 10000)
-        formulas = []
-        for _ in range(10000):
-            w = {
-                "players": rng.uniform(0.15, 0.9),
-                "bet": rng.uniform(0.05, 0.7),
-                "bpp": rng.uniform(0.02, 0.7),
-                "survive": rng.uniform(0.02, 0.5),
-                "recent": rng.uniform(0.02, 0.35),
-                "last": rng.uniform(0.05, 0.7),
-                "hot": rng.uniform(0.0, 0.45),
-                "cold": rng.uniform(0.0, 0.45),
-            }
-            noise = rng.uniform(0.0, 0.09)
-            formulas.append({"w": w, "noise": noise})
-        FORMULAS = formulas
-    elif mode == "VIP5000":
-        rng = random.Random(FORMULA_SEED + 5000)
-        formulas = []
-        for _ in range(5000):
-            w = {
-                "players": rng.uniform(0.15, 0.9),
-                "bet": rng.uniform(0.05, 0.7),
-                "bpp": rng.uniform(0.02, 0.7),
-                "survive": rng.uniform(0.02, 0.5),
-                "recent": rng.uniform(0.02, 0.35),
-                "last": rng.uniform(0.05, 0.7),
-                "hot": rng.uniform(0.0, 0.45),
-                "cold": rng.uniform(0.0, 0.45),
-            }
-            noise = rng.uniform(0.0, 0.09)
-            formulas.append({"w": w, "noise": noise})
-        FORMULAS = formulas
-    elif mode == "VIP100":
-        for _ in range(50):
-            formulas.append(mk_formula())
-        for _ in range(25):
-            formulas.append(mk_formula(base_bias="hot"))
-        for _ in range(25):
-            formulas.append(mk_formula(base_bias="cold"))
-    elif mode == "ADAPTIVE":
-        for _ in range(40):
-            formulas.append(mk_formula())
-        for _ in range(6):
-            formulas.append(mk_formula(base_bias="hot"))
-        for _ in range(4):
-            formulas.append(mk_formula(base_bias="cold"))
-    else:
-        for _ in range(50):
-            formulas.append(mk_formula())
+        temperature = rng.uniform(0.7, 1.35)
+        if focus == "aggressive":
+            temperature += rng.uniform(0.05, 0.15)
+        elif focus == "safe":
+            temperature -= rng.uniform(0.05, 0.12)
+
+        formula = {
+            "w": w,
+            "noise": rng.uniform(0.01, 0.06),
+            "adapt": 1.0,
+            "temperature": max(0.5, min(1.6, temperature)),
+            "score_bias": rng.uniform(-0.05, 0.05),
+            "stats": {"win": 0, "lose": 0, "recent": deque(maxlen=24)},
+        }
+        return formula
+
+    focus_pool = ["balanced", "safe", "aggressive", "counter", "streak"]
+    for idx in range(OMEGA_FORMULA_COUNT):
+        focus = focus_pool[idx % len(focus_pool)]
+        formulas.append(mk_formula(focus=focus))
 
     FORMULAS = formulas
+    formula_votes.clear()
 
 # initialize default formulas
-_init_formulas("VIP50")
+_init_formulas(SUPER_MODE)
 
-def choose_room(mode: str = "VIP50") -> Tuple[int, str]:
+def choose_room(mode: str = SUPER_MODE) -> Tuple[int, str]:
     """
-    Master chooser. Use mode in ("VIP50", "VIP50PLUS", "VIP100", "ADAPTIVE").
-    Returns (room_id, algo_label)
+    Master chooser for Omega AI. Returns (room_id, algo_label).
     """
-    global FORMULAS
-    # ensure correct formula set
-    if mode == "VIP100" and len(FORMULAS) != 100:
-        _init_formulas(mode)
-    if mode == "VIP50" and len(FORMULAS) != 50:
-        _init_formulas(mode)
-    if mode == "VIP50PLUS" and len(FORMULAS) < 40:
-        _init_formulas(mode)
-    if mode == "ADAPTIVE" and len(FORMULAS) < 40:
-        _init_formulas(mode)
+    global FORMULAS, prediction_confidence, formula_votes
+
+    if mode != SUPER_MODE or not FORMULAS:
+        _init_formulas(SUPER_MODE)
 
     cand = [r for r in ROOM_ORDER]
-    agg_scores = {r: 0.0 for r in cand}
+    agg_scores: Dict[int, float] = {r: 0.0 for r in cand}
+    confidence_tracker: Dict[int, List[float]] = {r: [] for r in cand}
+    formula_votes.clear()
 
     for idx, fentry in enumerate(FORMULAS):
         weights = fentry["w"]
         adapt = fentry.get("adapt", 1.0)
         noise_scale = fentry.get("noise", 0.02)
+        temperature = fentry.get("temperature", 1.0)
+        stats = fentry.get("stats", {})
+
         best_room = None
         best_score = -1e9
+
         for r in cand:
-            f = _room_features_enhanced(r)
-            score = 0.0
-            score += weights.get("players", 0.0) * f["players_norm"]
-            score += weights.get("bet", 0.0) * f["bet_norm"]
-            score += weights.get("bpp", 0.0) * f["bpp_norm"]
-            score += weights.get("survive", 0.0) * f["survive_score"]
-            score -= weights.get("recent", 0.0) * f["recent_pen"]
-            score -= weights.get("last", 0.0) * f["last_pen"]
-            score += weights.get("hot", 0.0) * f["hot_score"]
-            score -= weights.get("cold", 0.0) * f["cold_score"]
-            # deterministic noise
-            noise = (math.sin((idx + 1) * (r + 1) * 12.9898) * 43758.5453) % 1.0
-            noise = (noise - 0.5) * (noise_scale * 2.0)
-            score += noise
-            # scale by adapt (useful for ADAPTIVE)
-            score *= adapt
-            if score > best_score:
-                best_score = score
-                best_room = r
-        agg_scores[best_room] += best_score
-
-    # normalize
-    n = max(1, len(FORMULAS))
-    for r in agg_scores:
-        agg_scores[r] /= n
-
-    # ensemble-level mild adjustments
-    for r in cand:
-        f = _room_features_enhanced(r)
-        agg_scores[r] += 0.02 * f["hot_score"]
-        agg_scores[r] -= 0.02 * f["cold_score"]
-
-    ranked = sorted(agg_scores.items(), key=lambda kv: (-kv[1], kv[0]))
-    best_room = ranked[0][0]
-    return best_room, mode
-
-def update_formulas_after_result(predicted_room: Optional[int], killed_room: Optional[int], mode: str = "VIP50", lr: float = 0.12):
-    """
-    If mode == ADAPTIVE, adjust per-formula adapt multipliers based on voting alignment.
-    Simple reinforcement: reward formulas that voted for the (winning) choice and penalize those that predicted the losing choice.
-    """
-    global FORMULAS
-    if mode != "ADAPTIVE":
-        return
-    if not FORMULAS:
-        return
-
-    # determine which formula voted for which room
-    votes_for_pred = []
-    votes_for_killed = []
-    for idx, fentry in enumerate(FORMULAS):
-        weights = fentry["w"]
-        best_room = None
-        best_score = -1e9
-        for r in ROOM_ORDER:
             feat = _room_features_enhanced(r)
             score = 0.0
             score += weights.get("players", 0.0) * feat["players_norm"]
@@ -595,33 +585,132 @@ def update_formulas_after_result(predicted_room: Optional[int], killed_room: Opt
             score -= weights.get("last", 0.0) * feat["last_pen"]
             score += weights.get("hot", 0.0) * feat["hot_score"]
             score -= weights.get("cold", 0.0) * feat["cold_score"]
+            score += weights.get("kill_gap", 0.0) * feat["kill_gap_norm"]
+            score += weights.get("survival_streak", 0.0) * feat["survival_streak_norm"]
+            score -= weights.get("kill_streak", 0.0) * feat["kill_streak_norm"]
+            score += weights.get("momentum", 0.0) * feat["momentum"]
+            score += weights.get("resilience", 0.0) * feat["resilience"]
+            score -= weights.get("volatility", 0.0) * feat["volatility"]
+            score += weights.get("stability", 0.0) * feat["stability"]
+            score -= weights.get("bet_pressure", 0.0) * feat["bet_pressure"]
+            score += weights.get("player_trend", 0.0) * feat["player_trend"]
+            score += weights.get("adaptive_focus", 0.0) * feat["adaptive_focus"]
+
+            score *= adapt
+
+            noise = (math.sin((idx + 1) * (r + 1) * 12.9898) * 43758.5453) % 1.0
+            noise = (noise - 0.5) * (noise_scale * 2.0)
+            score += noise
+
+            recent_perf = stats.get("recent") if isinstance(stats.get("recent"), deque) else None
+            if recent_perf:
+                win_rate = (sum(recent_perf) / len(recent_perf)) if len(recent_perf) else 0.5
+                score *= 1.0 + (win_rate - 0.5) * 0.35
+
+            score *= 1.0 + (temperature - 1.0) * 0.22
+
             if score > best_score:
                 best_score = score
                 best_room = r
-        if best_room == predicted_room:
-            votes_for_pred.append(idx)
-        if best_room == killed_room:
-            votes_for_killed.append(idx)
+
+        if best_room is None:
+            continue
+
+        agg_scores[best_room] += best_score
+        confidence_tracker[best_room].append(best_score)
+        formula_votes[idx] = best_room
+        fentry["last_score"] = best_score
+
+    n_formulas = max(1, len(FORMULAS))
+    for r in agg_scores:
+        agg_scores[r] /= n_formulas
+
+    for r in cand:
+        feat = _room_features_enhanced(r)
+        agg_scores[r] += 0.03 * feat["survival_streak_norm"]
+        agg_scores[r] += 0.02 * feat["kill_gap_norm"]
+        agg_scores[r] -= 0.03 * feat["kill_streak_norm"]
+        agg_scores[r] -= 0.02 * feat["recent_pen"]
+
+    ranked = sorted(agg_scores.items(), key=lambda kv: (-kv[1], kv[0]))
+    best_room, best_score = ranked[0]
+    second_score = ranked[1][1] if len(ranked) > 1 else best_score
+
+    confidence_delta = max(0.0, best_score - second_score)
+    confidence = 0.55 + confidence_delta * 0.9
+    if confidence_tracker[best_room]:
+        if len(confidence_tracker[best_room]) >= 2:
+            try:
+                local_std = statistics.pstdev(confidence_tracker[best_room])
+                confidence -= min(0.2, local_std * 0.25)
+            except statistics.StatisticsError:
+                pass
+    prediction_confidence = max(0.05, min(0.95, confidence))
+    omega_meta["history"].append({"scores": ranked, "ts": time.time(), "confidence": prediction_confidence})
+    omega_meta["last_choice"] = best_room
+    omega_meta["last_confidence"] = prediction_confidence
+
+    return best_room, SUPER_MODE
+
+def update_formulas_after_result(predicted_room: Optional[int], killed_room: Optional[int], mode: str = SUPER_MODE, lr: float = 0.12):
+    """
+    Reinforcement loop for Omega AI after mỗi kết quả.
+    """
+    global FORMULAS, prediction_confidence, omega_meta
+
+    if not FORMULAS or killed_room is None:
+        return
 
     win = (predicted_room is not None and killed_room is not None and predicted_room != killed_room)
 
     for idx, fentry in enumerate(FORMULAS):
-        aw = fentry.get("adapt", 1.0)
-        if win:
-            # reward formulas that voted for predicted (winning) room; penalize those for killed
-            if idx in votes_for_pred:
-                aw = aw * (1.0 + lr)
-            if idx in votes_for_killed:
-                aw = aw * (1.0 - lr * 0.6)
+        vote = formula_votes.get(idx)
+        stats = fentry.setdefault("stats", {"win": 0, "lose": 0, "recent": deque(maxlen=24)})
+        recent = stats.setdefault("recent", deque(maxlen=24))
+        current_adapt = fentry.get("adapt", 1.0)
+        current_noise = fentry.get("noise", 0.02)
+
+        if vote is None:
+            # Không tham gia vote -> nhẹ nhàng khuyến khích khám phá
+            fentry["adapt"] = min(4.0, current_adapt * 1.01)
+            continue
+
+        if vote == killed_room:
+            stats["lose"] = stats.get("lose", 0) + 1
+            recent.append(0)
+            new_adapt = max(0.2, current_adapt * (1.0 - lr * 0.7))
+            fentry["adapt"] = new_adapt
+            fentry["score_bias"] = fentry.get("score_bias", 0.0) - lr * 0.12
+            fentry["noise"] = min(0.08, max(0.006, current_noise * (1.0 + lr * 0.5)))
         else:
-            # lost: penalize formulas that voted for predicted_room; reward those that voted for killed
-            if idx in votes_for_pred:
-                aw = max(0.1, aw * (1.0 - lr))
-            if idx in votes_for_killed:
-                aw = aw * (1.0 + lr * 0.6)
-        # clamp
-        aw = min(max(aw, 0.1), 5.0)
-        fentry["adapt"] = aw
+            stats["win"] = stats.get("win", 0) + 1
+            recent.append(1)
+            new_adapt = min(4.5, current_adapt * (1.0 + lr * 0.6))
+            fentry["adapt"] = new_adapt
+            fentry["score_bias"] = fentry.get("score_bias", 0.0) + lr * 0.1
+            fentry["noise"] = max(0.005, current_noise * (1.0 - lr * 0.4))
+
+        if recent:
+            win_rate_recent = sum(recent) / len(recent)
+        else:
+            win_rate_recent = 0.5
+
+        temp = fentry.get("temperature", 1.0)
+        temp_delta = (win_rate_recent - 0.5) * 0.2
+        fentry["temperature"] = max(0.5, min(1.6, temp + temp_delta))
+
+    formula_votes.clear()
+
+    if win:
+        omega_meta["win"] = omega_meta.get("win", 0) + 1
+        streak = omega_meta.get("streak", 0)
+        omega_meta["streak"] = streak + 1 if streak >= 0 else 1
+        prediction_confidence = min(0.99, prediction_confidence + 0.05)
+    else:
+        omega_meta["lose"] = omega_meta.get("lose", 0) + 1
+        streak = omega_meta.get("streak", 0)
+        omega_meta["streak"] = streak - 1 if streak <= 0 else -1
+        prediction_confidence = max(0.05, prediction_confidence - 0.07)
 
 # -------------------- BETTING HELPERS --------------------
 
@@ -691,12 +780,12 @@ def lock_prediction_if_needed(force: bool = False):
         return
 
     # Chọn phòng chỉ khi KHÔNG skip
-    algo = settings.get("algo", "VIP50")
+    algo = settings.get("algo", SUPER_MODE)
     try:
         chosen, algo_used = choose_room(algo)
     except Exception as e:
         log_debug(f"choose_room error: {e}")
-        chosen, algo_used = choose_room("VIP50")
+        chosen, algo_used = choose_room(SUPER_MODE)
     predicted_room = chosen
     prediction_locked = True
     ui_state = "PREDICTED"
@@ -852,11 +941,11 @@ def _mark_bet_result_from_issue(res_issue: Optional[int], krid: int):
         except Exception:
             pass
 
-    # --- ADAPTIVE: update formulas after we resolved result ---
+    # --- OMEGA AI: update ensemble sau khi chốt kết quả ---
     try:
         # res_issue corresponds to the round we just resolved; killed_room is global
-        # call update_formulas_after_result only for ADAPTIVE mode
-        update_formulas_after_result(predicted_room, krid, settings.get("algo", "VIP50"))
+        # Omega AI tự điều chỉnh trọng số sau mỗi kết quả
+        update_formulas_after_result(predicted_room, krid, settings.get("algo", SUPER_MODE))
     except Exception as e:
         log_debug(f"update_formulas_after_result err: {e}")
 
@@ -908,8 +997,11 @@ def on_message(ws, message):
                 players = int(rm.get("user_cnt") or rm.get("userCount") or 0) or 0
                 bet = int(rm.get("total_bet_amount") or rm.get("totalBet") or rm.get("bet") or 0) or 0
                 room_state[rid] = {"players": players, "bet": bet}
-                room_stats[rid]["last_players"] = players
-                room_stats[rid]["last_bet"] = bet
+                stats = room_stats[rid]
+                stats["last_players"] = players
+                stats["last_bet"] = bet
+                stats.setdefault("player_history", deque(maxlen=120)).append(players)
+                stats.setdefault("bet_history", deque(maxlen=120)).append(bet)
             if new_issue is not None and new_issue != issue_id:
                 # New issue arrived -> prepare
                 log_debug(f"New issue: {issue_id} -> {new_issue}")
@@ -963,8 +1055,12 @@ def on_message(ws, message):
                     if rid == krid:
                         room_stats[rid]["kills"] += 1
                         room_stats[rid]["last_kill_round"] = round_index
+                        room_stats[rid].setdefault("outcome_history", deque(maxlen=120)).append(0)
+                        room_outcome_history[rid].append(0)
                     else:
                         room_stats[rid]["survives"] += 1
+                        room_stats[rid].setdefault("outcome_history", deque(maxlen=120)).append(1)
+                        room_outcome_history[rid].append(1)
 
                 # Immediately mark bet result locally (fast) without waiting for balance
                 res_issue = new_issue if new_issue is not None else issue_id
@@ -1136,10 +1232,13 @@ def build_header(border_color: Optional[str] = None):
     algo_label = SELECTION_MODES.get(settings.get('algo'), settings.get('algo'))
 
     right_lines = []
-    right_lines.append(f"Thuật toán: {algo_label}")
+    right_lines.append(f"Thuật toán: {algo_label} - v{omega_meta.get('version')}")
     right_lines.append(f"Lãi/lỗ: [{pnl_style}] {pnl_str} [/{pnl_style}]")
     right_lines.append(f"Phiên: {issue_id or '-'}")
     right_lines.append(f"chuỗi: thắng={max_win_streak} / thua={max_lose_streak}")
+    omega_summary = f"{omega_meta.get('win', 0)}W/{omega_meta.get('lose', 0)}L"
+    right_lines.append(f"Độ tin cậy: {prediction_confidence * 100:.1f}%")
+    right_lines.append(f"Omega track: {omega_summary} | streak {omega_meta.get('streak', 0)}")
     if stop_when_profit_reached and profit_target is not None:
         right_lines.append(f"[green]TakeProfit@{profit_target}[/]")
     if stop_when_loss_reached and stop_loss_target is not None:
@@ -1184,6 +1283,7 @@ def build_mid(border_color: Optional[str] = None):
     if ui_state == "ANALYZING":
         lines = []
         lines.append(f"ĐANG PHÂN TÍCH PHÒNG AN TOÀN NHẤT  {_spinner_char()}")
+        lines.append(f"Ω-AI: {len(FORMULAS)} công thức đang hội ý")
         # show countdown if available (do not show explicit 'will place at Xs' note)
         if count_down is not None:
             try:
@@ -1232,6 +1332,8 @@ def build_mid(border_color: Optional[str] = None):
         lines = []
         lines.append(f"AI chọn: {name}  — [green]KẾT QUẢ DỰ ĐOÁN[/]")
         lines.append(f"Số đặt: {last_bet_amt} BUILD")
+        lines.append(f"Độ tự tin Ω: {prediction_confidence * 100:.1f}%")
+        lines.append(f"Thành tích Ω: {omega_meta.get('win', 0)}W/{omega_meta.get('lose', 0)}L")
         lines.append(f"Phòng sát thủ vào ván trước: {ROOM_NAMES.get(last_killed_room, '-')}")
         lines.append(f"Chuỗi thắng: {win_streak}  |  Chuỗi thua: {lose_streak}")
         lines.append("")
@@ -1254,6 +1356,8 @@ def build_mid(border_color: Optional[str] = None):
         lines.append(f"Lãi/lỗ: {cumulative_profit:+.4f} BUILD")
         lines.append(f"Đặt cược thành công (last): {last_success}")
         lines.append(f"Max Chuỗi: W={max_win_streak} / L={max_lose_streak}")
+        lines.append(f"Độ tin cậy Ω hiện tại: {prediction_confidence * 100:.1f}%")
+        lines.append(f"Thành tích Ω: {omega_meta.get('win', 0)}W/{omega_meta.get('lose', 0)}L")
         txt = "\n".join(lines)
         # border color to reflect last result
         border = None
@@ -1271,6 +1375,7 @@ def build_mid(border_color: Optional[str] = None):
         lines.append(f"Phòng sát thủ vào ván trước: {ROOM_NAMES.get(last_killed_room, '-')}")
         lines.append(f"AI chọn: {ROOM_NAMES.get(predicted_room, '-') if predicted_room else '-'}")
         lines.append(f"Lãi/lỗ: {cumulative_profit:+.4f} BUILD")
+        lines.append(f"Ω tracking: {omega_meta.get('win', 0)}W/{omega_meta.get('lose', 0)}L | Độ tin cậy {prediction_confidence * 100:.1f}%")
         txt = "\n".join(lines)
         return Panel(Align.center(Text.from_markup(txt)), title="TRẠNG THÁI", border_style=(border_color or _rainbow_border_style()))
 
@@ -1321,36 +1426,12 @@ def prompt_settings():
         multiplier = 2.0
     current_bet = base_bet
 
-    # Algorithm selection (chooser)
-    console.print("\n[bold]Chọn thuật toán:[/]")
-    console.print("1) VIP50 — 50 công thức tính phòng an toàn nhất (AI + RANDOM + toán học)")
-    console.print("2) VIP50+ — VIP50 mở rộng thêm bias hot/cold")
-    console.print("3) VIP100 — 100 công thức (ensemble lớn)")
-    console.print("4) ADAPTIVE — Bắt đầu như VIP50+ và tự điều chỉnh weights khi có kết quả")
-    console.print("5) VIP5000 — 5000 công thức")
-    console.print("6) VIP5000PLUS — 5000 công thức + lọc AI")
-    console.print("7) VIP10000 — 10000 công thức")
-
-    alg = safe_input("Chọn (1-7, mặc định 1): ", default="1")
+    console.print("\n[bold green]Ω AI siêu trí tuệ đã kích hoạt — tự động chọn chế độ tối ưu.[/]")
+    settings["algo"] = SUPER_MODE
     try:
-        mapping = {
-            "1": "VIP50",
-            "2": "VIP50PLUS",
-            "3": "VIP100",
-            "4": "ADAPTIVE",
-            "5": "VIP5000",
-            "6": "VIP5000PLUS",
-            "7": "VIP10000",
-        }
-        settings["algo"] = mapping.get(str(alg).strip(), "VIP50")
+        _init_formulas(SUPER_MODE)
     except Exception:
-        settings["algo"] = "VIP50"
-
-    # ensure formulas match selection
-    try:
-        _init_formulas(settings["algo"])
-    except Exception:
-        pass
+        log_debug("Không thể tái khởi tạo Omega AI")
 
     s = safe_input("Chống soi: sau bao nhiêu ván đặt thì nghỉ 1 ván: ", default="0")
     try:
