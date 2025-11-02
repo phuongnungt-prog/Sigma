@@ -422,7 +422,7 @@ ENSEMBLE_DIVERSITY: float = 0.0  # Độ đa dạng ensemble
 BAYESIAN_PRIOR: float = 0.5  # Prior probability
 KELLY_FRACTION: float = 0.25  # Kelly Criterion fraction
 RISK_REWARD_RATIO: float = 2.0  # Risk/Reward target
-MONTE_CARLO_SIMS: int = 1000  # Số simulations (tăng lên 1000)
+MONTE_CARLO_SIMS: int = 200  # Số simulations (tối ưu cho tốc độ)
 
 # Performance Metrics
 total_predictions: int = 0
@@ -814,31 +814,35 @@ def _kalman_filter_estimate(room_id: int, measurement: float, prev_estimate: flo
     
     return new_estimate, new_error
 
-def _monte_carlo_simulation(room_features: Dict[int, Dict[str, float]], n_sims: int = 1000) -> Dict[int, float]:
+def _monte_carlo_simulation(room_features: Dict[int, Dict[str, float]], n_sims: int = 200) -> Dict[int, float]:
     """
     Monte Carlo Simulation để ước lượng xác suất thắng của mỗi phòng.
-    Chạy N simulations với noise ngẫu nhiên.
+    Chạy N simulations với noise ngẫu nhiên. OPTIMIZED FOR SPEED.
     """
     win_counts = {r: 0 for r in ROOM_ORDER}
     
+    # Pre-extract safety scores for speed
+    base_scores = {}
+    for r in ROOM_ORDER:
+        if r in room_features:
+            base_scores[r] = room_features[r].get("safety_score", 0.5)
+        else:
+            base_scores[r] = 0.5
+    
+    # Fast simulation loop
     for _ in range(n_sims):
-        # Add random noise to safety scores
         noisy_scores = {}
         for r in ROOM_ORDER:
-            if r in room_features:
-                base_score = room_features[r].get("safety_score", 0.5)
-                # Gaussian noise
-                noise = np.random.normal(0, 0.1)
-                noisy_scores[r] = max(0.0, min(1.0, base_score + noise))
-            else:
-                noisy_scores[r] = 0.5
+            # Faster noise generation
+            noise = random.gauss(0, 0.1)
+            noisy_scores[r] = max(0.0, min(1.0, base_scores[r] + noise))
         
-        # Find best room in this simulation
+        # Find best room
         best_room = max(noisy_scores.items(), key=lambda x: x[1])[0]
         win_counts[best_room] += 1
     
-    # Convert counts to probabilities
-    total = sum(win_counts.values())
+    # Convert to probabilities
+    total = n_sims  # Fixed for speed
     return {r: count / total for r, count in win_counts.items()}
 
 def _calculate_kelly_criterion(win_prob: float, win_multiplier: float = 7.0, 
@@ -1011,27 +1015,32 @@ _init_formulas("ULTRA_AI")
 
 def choose_room(mode: str = "ULTRA_AI") -> Tuple[int, str]:
     """
-    🧠 ULTRA AI Room Chooser - Siêu trí tuệ với TOÁN HỌC CAO CẤP.
+    🧠 ULTRA AI Room Chooser - Siêu trí tuệ, NHANH NHẸN, CHÍNH XÁC.
     
-    Sử dụng:
-    1. Ensemble Learning (10,000 formulas)
-    2. Markov Chain (transition probabilities)
-    3. Bayesian Inference (posterior probabilities)
-    4. Monte Carlo Simulation (1000 sims)
-    5. Kalman Filter (optimal estimation)
-    6. Shannon Entropy (uncertainty measure)
-    7. Kelly Criterion (optimal bet sizing)
-    8. K-Means Clustering (pattern grouping)
+    OPTIMIZED FOR SPEED + ACCURACY:
+    1. Ensemble Learning (10,000 formulas) - Fast voting
+    2. Markov Chain - Cached probabilities
+    3. Kalman Filter - Optimal estimation
+    4. Monte Carlo Simulation (200 sims) - Fast enough
+    5. Advanced combination - Smart weights
     
     Returns (room_id, algo_label)
     """
     global FORMULAS, PATTERN_MEMORY, SEQUENCE_MEMORY, KALMAN_ESTIMATES
+    
+    import time
+    start_time = time.time()
     
     # Ensure formulas initialized
     if not FORMULAS or len(FORMULAS) != 10000:
         _init_formulas("ULTRA_AI")
 
     cand = [r for r in ROOM_ORDER]
+    
+    # ⚡ PRE-COMPUTE room features ONCE for all formulas (MAJOR SPEEDUP!)
+    room_features_cache = {}
+    for r in cand:
+        room_features_cache[r] = _room_features_ultra_ai(r)
     
     # Tính toán scores từ tất cả formulas
     formula_votes = {r: [] for r in cand}  # Lưu (score, confidence) cho mỗi phòng
@@ -1044,7 +1053,7 @@ def choose_room(mode: str = "ULTRA_AI") -> Tuple[int, str]:
         
         room_scores = {}
         for r in cand:
-            f = _room_features_ultra_ai(r)
+            f = room_features_cache[r]  # ⚡ Use pre-computed features!
             score = 0.0
             
             # 🧠 NEW LOGIC - COUNTERINTUITIVE (Đi ngược đám đông)
@@ -1188,94 +1197,47 @@ def choose_room(mode: str = "ULTRA_AI") -> Tuple[int, str]:
         KALMAN_ESTIMATES[r] = {"estimate": new_est, "error": new_err}
         kalman_scores[r] = new_est
     
-    # 3. MONTE CARLO SIMULATION
-    room_features_dict = {}
-    for r in cand:
-        room_features_dict[r] = _room_features_ultra_ai(r)
-    
-    monte_carlo_probs = _monte_carlo_simulation(room_features_dict, n_sims=MONTE_CARLO_SIMS)
-    
-    # 4. SHANNON ENTROPY - Uncertainty measure
-    entropy_scores = {r: 0.0 for r in cand}
-    for r in cand:
-        # Calculate entropy based on formula votes
-        vote_dist = {r2: 0 for r2 in cand}
-        for votes_list in formula_votes.values():
-            if votes_list:
-                vote_dist[r] = len(votes_list)
+    # 3. FAST MONTE CARLO - Only if we have time (>1s elapsed)
+    elapsed = time.time() - start_time
+    if elapsed < 1.5:  # Only run Monte Carlo if we have time
+        room_features_dict = {}
+        for r in cand:
+            room_features_dict[r] = _room_features_ultra_ai(r)
         
-        entropy = _calculate_shannon_entropy(vote_dist)
-        # Lower entropy = more certain = higher score
-        entropy_scores[r] = 1.0 - (entropy / 3.0)  # Normalize (max entropy for 8 rooms ≈ 3)
+        monte_carlo_probs = _monte_carlo_simulation(room_features_dict, n_sims=MONTE_CARLO_SIMS)
+        use_monte_carlo = True
+    else:
+        # Skip Monte Carlo if too slow
+        monte_carlo_probs = {r: final_scores[r] for r in cand}
+        use_monte_carlo = False
+        log_debug("⚠️ Skipped Monte Carlo (time constraint)")
     
-    # 5. EMA SMOOTHING - Exponential Moving Average
+    # 4. FAST EMA SMOOTHING - Very fast
     ema_scores = {}
     for r in cand:
-        raw_score = final_scores[r]
-        smoothed_score = _exponential_moving_average(r, raw_score)
-        ema_scores[r] = smoothed_score
+        ema_scores[r] = _exponential_moving_average(r, final_scores[r])
     
-    # 6. REGRESSION TREND ANALYSIS
-    trend_scores = {}
-    for r in cand:
-        # Get recent history for this room
-        room_history = [rec for rec in bet_history if rec.get("room") == r]
-        if len(room_history) >= 3:
-            # Extract win/loss as binary values (1 = win, 0 = loss)
-            results = []
-            for rec in room_history[-10:]:
-                result = rec.get("result", "")
-                results.append(1.0 if "Thắng" in result else 0.0)
-            
-            trend = _regression_trend(results)
-            # Positive trend = winning more recently = safer
-            # Negative trend = losing more recently = riskier
-            trend_scores[r] = 0.5 + (trend * 0.5)  # Normalize to 0-1
-        else:
-            trend_scores[r] = 0.5
-    
-    # 7. GINI COEFFICIENT - Measure concentration
-    bet_amounts = [d.get("bet", 0) for d in rooms_data.values()]
-    player_counts = [d.get("players", 0) for d in rooms_data.values()]
-    
-    bet_gini = _calculate_gini_coefficient(bet_amounts)
-    player_gini = _calculate_gini_coefficient(player_counts)
-    
-    # High Gini = concentrated (risky), Low Gini = distributed (safer)
-    gini_bonus = (1.0 - (bet_gini + player_gini) / 2.0) * 0.1
-    
-    # 8. WEIGHTED MEDIAN ENSEMBLE
-    # Instead of simple average, use weighted median (more robust)
-    median_scores = {}
-    for r in cand:
-        all_method_scores = [
-            final_scores[r],
-            markov_scores[r],
-            kalman_scores[r],
-            monte_carlo_probs[r],
-            entropy_scores[r],
-            ema_scores[r],
-            trend_scores[r]
-        ]
-        all_weights = [0.30, 0.20, 0.15, 0.20, 0.05, 0.05, 0.05]
-        
-        median_scores[r] = _weighted_median(all_method_scores, all_weights)
-    
-    # 9. ENSEMBLE COMBINATION - Advanced weighted combination
+    # SIMPLIFIED ENSEMBLE - Fast combination
+    # Only use the most important methods
     final_advanced_scores = {}
     for r in cand:
-        # Combine all scores with optimized weights
-        combined = (
-            final_scores[r] * 0.25 +           # Original ensemble: 25%
-            markov_scores[r] * 0.18 +          # Markov Chain: 18%
-            kalman_scores[r] * 0.15 +          # Kalman Filter: 15%
-            monte_carlo_probs[r] * 0.20 +      # Monte Carlo: 20%
-            entropy_scores[r] * 0.07 +         # Entropy: 7%
-            ema_scores[r] * 0.08 +             # EMA: 8%
-            trend_scores[r] * 0.05 +           # Trend: 5%
-            median_scores[r] * 0.02 +          # Median: 2%
-            gini_bonus                          # Gini bonus
-        )
+        if use_monte_carlo:
+            # Full combination with Monte Carlo
+            combined = (
+                final_scores[r] * 0.30 +           # Ensemble: 30%
+                markov_scores[r] * 0.25 +          # Markov: 25%
+                kalman_scores[r] * 0.20 +          # Kalman: 20%
+                monte_carlo_probs[r] * 0.15 +      # Monte Carlo: 15%
+                ema_scores[r] * 0.10               # EMA: 10%
+            )
+        else:
+            # Fast combination without Monte Carlo
+            combined = (
+                final_scores[r] * 0.40 +           # Ensemble: 40%
+                markov_scores[r] * 0.30 +          # Markov: 30%
+                kalman_scores[r] * 0.20 +          # Kalman: 20%
+                ema_scores[r] * 0.10               # EMA: 10%
+            )
         final_advanced_scores[r] = combined
     
     # Select best room
@@ -1287,19 +1249,19 @@ def choose_room(mode: str = "ULTRA_AI") -> Tuple[int, str]:
     mc_confidence = monte_carlo_probs[best_room]
     enhanced_confidence = (best_confidence * 0.6 + mc_confidence * 0.4)
     
-    # Logging cho analysis - SIÊU CHI TIẾT
-    log_debug(f"🧠 ULTRA_AI ADVANCED ANALYSIS - Room {best_room} selected")
-    log_debug(f"  📊 Ensemble (10k formulas): {final_scores[best_room]:.3f}")
-    log_debug(f"  🔗 Markov Chain: {markov_scores[best_room]:.3f}")
-    log_debug(f"  🎯 Kalman Filter: {kalman_scores[best_room]:.3f}")
-    log_debug(f"  🎲 Monte Carlo (1000 sims): {monte_carlo_probs[best_room]:.3f}")
-    log_debug(f"  📈 Shannon Entropy: {entropy_scores[best_room]:.3f}")
-    log_debug(f"  〰️ EMA Smoothing: {ema_scores[best_room]:.3f}")
-    log_debug(f"  📉 Regression Trend: {trend_scores[best_room]:.3f}")
-    log_debug(f"  📊 Weighted Median: {median_scores[best_room]:.3f}")
-    log_debug(f"  📐 Gini Coefficient: {bet_gini:.3f} (bet), {player_gini:.3f} (player)")
-    log_debug(f"  ⭐ FINAL SCORE: {final_advanced_scores[best_room]:.3f}")
-    log_debug(f"  🏆 Top 3: {[(r, f'{s:.3f}') for r, s in ranked[:3]]}")
+    # Performance tracking
+    total_elapsed = time.time() - start_time
+    
+    # Logging - OPTIMIZED (only if debug mode)
+    if LOG_LEVEL == "DEBUG":
+        log_debug(f"⚡ ULTRA_AI - Room {best_room} in {total_elapsed:.2f}s")
+        log_debug(f"  📊 Ensemble: {final_scores[best_room]:.3f}")
+        log_debug(f"  🔗 Markov: {markov_scores[best_room]:.3f}")
+        log_debug(f"  🎯 Kalman: {kalman_scores[best_room]:.3f}")
+        if use_monte_carlo:
+            log_debug(f"  🎲 Monte Carlo: {monte_carlo_probs[best_room]:.3f}")
+        log_debug(f"  〰️ EMA: {ema_scores[best_room]:.3f}")
+        log_debug(f"  ⭐ FINAL: {final_advanced_scores[best_room]:.3f}")
     
     return best_room, f"ULTRA_AI (Conf: {enhanced_confidence:.1%})"
 
