@@ -313,15 +313,20 @@ def fetch_balances_3games(retries=2, timeout=6, params=None, uid=None, secret=No
             build, world, usdt = _parse_balance_from_json(j)
 
             if build is not None:
-                if last_balance_val is None:
+                # ✅ FIX: Chỉ set starting_balance lần đầu tiên
+                if starting_balance is None:
                     starting_balance = build
                     last_balance_val = build
+                    current_build = build
+                    console.print(f"[cyan]💰 Số dư ban đầu: {starting_balance:.4f} BUILD[/cyan]")
                 else:
+                    # Tính delta chỉ khi có thay đổi
                     delta = float(build) - float(last_balance_val)
-                    if abs(delta) > 0:
+                    if abs(delta) > 0.0001:  # Tránh floating point error
                         cumulative_profit += delta
                         last_balance_val = build
-                current_build = build
+                        console.print(f"[dim]💰 Balance thay đổi: {delta:+.4f} BUILD | Tổng lãi/lỗ: {cumulative_profit:+.4f}[/dim]")
+                    current_build = build
             if usdt is not None:
                 current_usdt = usdt
             if world is not None:
@@ -1146,23 +1151,37 @@ def _mark_bet_result_from_issue(res_issue: Optional[int], krid: int):
         if placed_room != int(krid):
             rec["result"] = "Thắng"
             rec["settled"] = True
+            
+            # Tính delta thắng (amount × hệ số phòng, thường là ×7 hoặc tùy game)
+            bet_amount = float(rec.get("amount"))
+            # Game này thắng = nhận lại tiền cược (không tính thêm)
+            # Vì vậy delta = 0 (đã đặt, giờ được giữ lại)
+            # Lãi thực tế = các phòng khác bị trừ chia đều (game tự tính)
+            rec["delta"] = 0.0  # Balance sẽ tự update qua fetch_balances
+            
             current_bet = base_bet              # reset martingale về base
             win_streak += 1
             lose_streak = 0
             if win_streak > max_win_streak:
                 max_win_streak = win_streak
+            
+            console.print(f"[green]🟢 THẮNG! Phòng {placed_room} an toàn. Reset về base: {current_bet} BUILD[/green]")
         else:
             # THUA -> nhân tiền cho ván kế tiếp
             rec["result"] = "Thua"
             rec["settled"] = True
+            
+            bet_amount = float(rec.get("amount"))
+            rec["delta"] = -bet_amount  # Mất tiền đã đặt
+            
             try:
                 old_bet = current_bet
-                current_bet = float(rec.get("amount")) * float(multiplier)
-                console.print(f"[red]🔴 THUA! Số cũ: {rec.get('amount')} × {multiplier} = {current_bet} BUILD[/red]")
-                console.print(f"[red]🔴 DEBUG: current_bet đã được cập nhật từ {old_bet} thành {current_bet}[/red]")
+                current_bet = bet_amount * float(multiplier)
+                console.print(f"[red]🔴 THUA! Mất {bet_amount} BUILD. Ván sau: {bet_amount} × {multiplier} = {current_bet} BUILD[/red]")
             except Exception as e:
                 current_bet = base_bet
                 console.print(f"[red]🔴 THUA! Lỗi tính toán: {e}, reset về: {current_bet} BUILD[/red]")
+            
             lose_streak += 1
             win_streak = 0
             if lose_streak > max_lose_streak:
@@ -1304,28 +1323,31 @@ def on_message(ws, message):
 
             # check profit target or stop-loss after we fetched balances (balance fetch may set current_build)
             def _check_stop_conditions():
-                global stop_flag
+                global stop_flag, cumulative_profit
                 try:
-                    if stop_when_profit_reached and profit_target is not None and isinstance(current_build, (int, float)) and current_build >= profit_target:
-                        console.print(f"[bold green]🎉 MỤC TIÊU LÃI ĐẠT: {current_build} >= {profit_target}. Dừng tool.[/]")
-                        stop_flag = True
-                        try:
-                            wsobj = _ws.get("ws")
-                            if wsobj:
-                                wsobj.close()
-                        except Exception:
-                            pass
-                    if stop_when_loss_reached and stop_loss_target is not None and isinstance(current_build, (int, float)) and current_build <= stop_loss_target:
-                        console.print(f"[bold red]⚠️ STOP-LOSS TRIGGED: {current_build} <= {stop_loss_target}. Dừng tool.[/]")
-                        stop_flag = True
-                        try:
-                            wsobj = _ws.get("ws")
-                            if wsobj:
-                                wsobj.close()
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
+                    # ✅ FIX: So sánh CUMULATIVE PROFIT thay vì current_build
+                    if stop_when_profit_reached and profit_target is not None:
+                        if cumulative_profit >= profit_target:
+                            console.print(f"[bold green]🎉 MỤC TIÊU LÃI ĐẠT: Lãi {cumulative_profit:+.4f} >= {profit_target}. Dừng tool.[/]")
+                            stop_flag = True
+                            try:
+                                wsobj = _ws.get("ws")
+                                if wsobj:
+                                    wsobj.close()
+                            except Exception:
+                                pass
+                    if stop_when_loss_reached and stop_loss_target is not None:
+                        if cumulative_profit <= -abs(stop_loss_target):
+                            console.print(f"[bold red]⚠️ STOP-LOSS TRIGGERED: Lỗ {cumulative_profit:+.4f} <= -{abs(stop_loss_target)}. Dừng tool.[/]")
+                            stop_flag = True
+                            try:
+                                wsobj = _ws.get("ws")
+                                if wsobj:
+                                    wsobj.close()
+                            except Exception:
+                                pass
+                except Exception as e:
+                    log_debug(f"_check_stop_conditions error: {e}")
             # run check slightly delayed to allow balance refresh thread update
             threading.Timer(1.2, _check_stop_conditions).start()
 
@@ -1471,15 +1493,15 @@ def build_header(border_color: Optional[str] = None):
 
     right_lines = []
     right_lines.append(f"🎯 {algo_label}")
-    right_lines.append(f"Lãi/lỗ: [{pnl_style}] {pnl_str} [/{pnl_style}]")
+    right_lines.append(f"Lãi/lỗ: [{pnl_style}] {pnl_str} BUILD [/{pnl_style}]")
     right_lines.append(f"Phiên: {issue_id or '-'}")
     right_lines.append(f"Chuỗi: W={max_win_streak} / L={max_lose_streak}")
     right_lines.append(f"🧠 AI Conf: {avg_confidence:.1%} | Patterns: {pattern_count}")
     right_lines.append(f"📚 Học: {META_LEARNING_RATE:.3f} | Anti: {anti_pattern_count}")
     if stop_when_profit_reached and profit_target is not None:
-        right_lines.append(f"[green]TakeProfit@{profit_target}[/]")
+        right_lines.append(f"[green]🎯 Target: +{profit_target:.2f} BUILD[/]")
     if stop_when_loss_reached and stop_loss_target is not None:
-        right_lines.append(f"[red]StopLoss@{stop_loss_target}[/]")
+        right_lines.append(f"[red]🛑 Stop: -{stop_loss_target:.2f} BUILD[/]")
 
     right = Text.from_markup("\n".join(right_lines))
 
@@ -1696,26 +1718,30 @@ def prompt_settings():
     except Exception:
         pause_after_losses = 0
 
-    pt = safe_input("lãi bao nhiêu thì chốt( không dùng enter): ", default="")
+    pt = safe_input("Lãi bao nhiêu BUILD thì dừng (để trống = không giới hạn): ", default="")
     try:
         if pt and pt.strip() != "":
-            profit_target = float(pt)
+            profit_target = abs(float(pt))  # Đảm bảo số dương
             stop_when_profit_reached = True
+            console.print(f"[green]✓ Sẽ dừng khi LÃI đạt +{profit_target:.4f} BUILD[/green]")
         else:
             profit_target = None
             stop_when_profit_reached = False
+            console.print("[dim]✓ Không giới hạn lãi[/dim]")
     except Exception:
         profit_target = None
         stop_when_profit_reached = False
 
-    sl = safe_input("lỗ bao nhiêu thì chốt( không dùng enter): ", default="")
+    sl = safe_input("Lỗ bao nhiêu BUILD thì dừng (để trống = không giới hạn): ", default="")
     try:
         if sl and sl.strip() != "":
-            stop_loss_target = float(sl)
+            stop_loss_target = abs(float(sl))  # Đảm bảo số dương
             stop_when_loss_reached = True
+            console.print(f"[red]✓ Sẽ dừng khi LỖ đạt -{stop_loss_target:.4f} BUILD[/red]")
         else:
             stop_loss_target = None
             stop_when_loss_reached = False
+            console.print("[dim]✓ Không giới hạn lỗ[/dim]")
     except Exception:
         stop_loss_target = None
         stop_when_loss_reached = False
