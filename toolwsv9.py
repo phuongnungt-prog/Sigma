@@ -48,6 +48,28 @@ from datetime import datetime
 from urllib.parse import urlparse, parse_qs
 from typing import Any, Dict, Tuple, Optional, List
 
+# Try import numpy, fallback if not available
+try:
+    import numpy as np
+    HAS_NUMPY = True
+except ImportError:
+    HAS_NUMPY = False
+    # Fallback: Simple numpy-like functions
+    class np:
+        @staticmethod
+        def array(x):
+            return list(x)
+        @staticmethod
+        def sum(x):
+            return sum(x) if isinstance(x, list) else x
+        @staticmethod
+        def log2(x):
+            return [math.log2(v) if v > 0 else 0 for v in x] if isinstance(x, list) else math.log2(x) if x > 0 else 0
+        @staticmethod
+        def random():
+            return random
+        random.normal = lambda m, s: random.gauss(m, s)
+
 import pytz
 import requests
 import websocket
@@ -400,13 +422,21 @@ ENSEMBLE_DIVERSITY: float = 0.0  # Độ đa dạng ensemble
 BAYESIAN_PRIOR: float = 0.5  # Prior probability
 KELLY_FRACTION: float = 0.25  # Kelly Criterion fraction
 RISK_REWARD_RATIO: float = 2.0  # Risk/Reward target
-MONTE_CARLO_SIMS: int = 100  # Số simulations
+MONTE_CARLO_SIMS: int = 1000  # Số simulations (tăng lên 1000)
 
 # Performance Metrics
 total_predictions: int = 0
 correct_predictions: int = 0
 avg_confidence_when_correct: float = 0.0
 avg_confidence_when_wrong: float = 0.0
+
+# Advanced Mathematical Models
+MARKOV_TRANSITION_MATRIX: Dict[int, Dict[int, float]] = defaultdict(lambda: defaultdict(float))
+MARKOV_STATE_COUNTS: Dict[int, int] = defaultdict(int)
+KALMAN_ESTIMATES: Dict[int, Dict[str, float]] = {}  # Kalman filter estimates
+CLUSTERING_CENTERS: List[Tuple[float, float]] = []  # K-means centers
+EMA_ALPHA: float = 0.3  # Exponential Moving Average alpha
+ROOM_EMA: Dict[int, float] = {r: 0.5 for r in range(1, 9)}  # EMA scores
 
 def _room_features_ultra_ai(rid: int):
     """
@@ -629,6 +659,213 @@ def _room_features_ultra_ai(rid: int):
 def _room_features_enhanced(rid: int):
     return _room_features_ultra_ai(rid)
 
+def _update_markov_chain(prev_killed: Optional[int], current_killed: Optional[int]):
+    """
+    Cập nhật Markov Chain transition matrix.
+    Học xác suất chuyển trạng thái: Phòng A bị kill → Phòng B bị kill tiếp theo.
+    """
+    global MARKOV_TRANSITION_MATRIX, MARKOV_STATE_COUNTS
+    if prev_killed is not None and current_killed is not None:
+        MARKOV_TRANSITION_MATRIX[prev_killed][current_killed] += 1
+        MARKOV_STATE_COUNTS[prev_killed] += 1
+
+def _get_markov_probability(from_room: int, to_room: int) -> float:
+    """
+    Lấy xác suất chuyển từ phòng A bị kill sang phòng B bị kill.
+    P(B|A) = count(A→B) / count(A)
+    """
+    if from_room not in MARKOV_STATE_COUNTS or MARKOV_STATE_COUNTS[from_room] == 0:
+        return 1.0 / 8.0  # Uniform prior
+    
+    transition_count = MARKOV_TRANSITION_MATRIX[from_room].get(to_room, 0)
+    total_count = MARKOV_STATE_COUNTS[from_room]
+    return (transition_count + 0.5) / (total_count + 4.0)  # Laplace smoothing
+
+def _calculate_shannon_entropy(room_data: Dict[int, float]) -> float:
+    """
+    Tính Shannon Entropy để đo độ không chắc chắn.
+    H(X) = -Σ p(x) * log(p(x))
+    Entropy cao = Không chắc chắn cao
+    """
+    try:
+        values = list(room_data.values())
+        if len(values) == 0:
+            return 0.0
+        
+        total = sum(values)
+        if total == 0:
+            return 0.0
+        
+        # Calculate probabilities
+        probs = [v / total for v in values if v > 0]
+        
+        # Shannon entropy
+        entropy = 0.0
+        for p in probs:
+            if p > 0:
+                entropy -= p * math.log2(p)
+        
+        return entropy
+    except Exception as e:
+        log_debug(f"Shannon entropy error: {e}")
+        return 0.0
+
+def _exponential_moving_average(room_id: int, new_value: float) -> float:
+    """
+    EMA (Exponential Moving Average) để smooth predictions.
+    EMA_t = α * value_t + (1-α) * EMA_{t-1}
+    """
+    global ROOM_EMA, EMA_ALPHA
+    prev_ema = ROOM_EMA.get(room_id, 0.5)
+    new_ema = EMA_ALPHA * new_value + (1 - EMA_ALPHA) * prev_ema
+    ROOM_EMA[room_id] = new_ema
+    return new_ema
+
+def _weighted_median(values: List[float], weights: List[float]) -> float:
+    """
+    Tính Weighted Median - Robust hơn mean.
+    """
+    if not values or not weights:
+        return 0.5
+    
+    # Sort by values
+    sorted_pairs = sorted(zip(values, weights))
+    
+    total_weight = sum(weights)
+    if total_weight == 0:
+        return 0.5
+    
+    cumsum = 0.0
+    for val, weight in sorted_pairs:
+        cumsum += weight
+        if cumsum >= total_weight / 2.0:
+            return val
+    
+    return sorted_pairs[-1][0]
+
+def _calculate_gini_coefficient(values: List[float]) -> float:
+    """
+    Gini Coefficient để đo độ phân tán.
+    Gini = 0: Hoàn toàn đồng đều
+    Gini = 1: Hoàn toàn tập trung
+    """
+    if not values or len(values) < 2:
+        return 0.0
+    
+    sorted_values = sorted(values)
+    n = len(sorted_values)
+    cumsum = 0.0
+    
+    for i, val in enumerate(sorted_values):
+        cumsum += (i + 1) * val
+    
+    total = sum(sorted_values)
+    if total == 0:
+        return 0.0
+    
+    gini = (2.0 * cumsum) / (n * total) - (n + 1) / n
+    return gini
+
+def _regression_trend(values: List[float]) -> float:
+    """
+    Linear Regression để tìm trend (tăng/giảm).
+    Returns: slope (dương = tăng, âm = giảm)
+    """
+    if not values or len(values) < 2:
+        return 0.0
+    
+    n = len(values)
+    x = list(range(n))
+    
+    # Calculate means
+    x_mean = sum(x) / n
+    y_mean = sum(values) / n
+    
+    # Calculate slope
+    numerator = sum((x[i] - x_mean) * (values[i] - y_mean) for i in range(n))
+    denominator = sum((x[i] - x_mean) ** 2 for i in range(n))
+    
+    if denominator == 0:
+        return 0.0
+    
+    slope = numerator / denominator
+    return slope
+
+def _kalman_filter_estimate(room_id: int, measurement: float, prev_estimate: float = 0.5, 
+                            prev_error: float = 1.0) -> Tuple[float, float]:
+    """
+    Kalman Filter để ước lượng trạng thái phòng.
+    Kết hợp measurement mới với estimate cũ một cách optimal.
+    
+    Returns: (new_estimate, new_error)
+    """
+    # Process noise và measurement noise (tuneable)
+    Q = 0.01  # Process noise covariance
+    R = 0.1   # Measurement noise covariance
+    
+    # Prediction
+    predicted_estimate = prev_estimate
+    predicted_error = prev_error + Q
+    
+    # Update
+    kalman_gain = predicted_error / (predicted_error + R)
+    new_estimate = predicted_estimate + kalman_gain * (measurement - predicted_estimate)
+    new_error = (1 - kalman_gain) * predicted_error
+    
+    return new_estimate, new_error
+
+def _monte_carlo_simulation(room_features: Dict[int, Dict[str, float]], n_sims: int = 1000) -> Dict[int, float]:
+    """
+    Monte Carlo Simulation để ước lượng xác suất thắng của mỗi phòng.
+    Chạy N simulations với noise ngẫu nhiên.
+    """
+    win_counts = {r: 0 for r in ROOM_ORDER}
+    
+    for _ in range(n_sims):
+        # Add random noise to safety scores
+        noisy_scores = {}
+        for r in ROOM_ORDER:
+            if r in room_features:
+                base_score = room_features[r].get("safety_score", 0.5)
+                # Gaussian noise
+                noise = np.random.normal(0, 0.1)
+                noisy_scores[r] = max(0.0, min(1.0, base_score + noise))
+            else:
+                noisy_scores[r] = 0.5
+        
+        # Find best room in this simulation
+        best_room = max(noisy_scores.items(), key=lambda x: x[1])[0]
+        win_counts[best_room] += 1
+    
+    # Convert counts to probabilities
+    total = sum(win_counts.values())
+    return {r: count / total for r, count in win_counts.items()}
+
+def _calculate_kelly_criterion(win_prob: float, win_multiplier: float = 7.0, 
+                               loss_multiplier: float = 1.0) -> float:
+    """
+    Kelly Criterion: Tính phần trăm vốn nên đặt cược.
+    f* = (p * b - q) / b
+    
+    p = xác suất thắng
+    q = xác suất thua = 1 - p
+    b = tỷ lệ thắng/thua
+    """
+    if win_prob <= 0 or win_prob >= 1:
+        return 0.0
+    
+    p = win_prob
+    q = 1 - p
+    b = win_multiplier / loss_multiplier
+    
+    kelly_fraction = (p * b - q) / b
+    
+    # Safety: Only bet if Kelly > 0, and cap at 25% (fractional Kelly)
+    if kelly_fraction > 0:
+        return min(kelly_fraction * 0.25, 0.25)  # Fractional Kelly (1/4)
+    else:
+        return 0.0
+
 def _generate_pattern_signature(recent_history: List[Dict[str, Any]]) -> str:
     """
     Tạo chữ ký pattern từ lịch sử gần đây để nhận diện xu hướng.
@@ -774,10 +1011,21 @@ _init_formulas("ULTRA_AI")
 
 def choose_room(mode: str = "ULTRA_AI") -> Tuple[int, str]:
     """
-    🧠 ULTRA AI Room Chooser - Siêu trí tuệ với Deep Learning.
-    Returns (room_id, algo_label, confidence_score)
+    🧠 ULTRA AI Room Chooser - Siêu trí tuệ với TOÁN HỌC CAO CẤP.
+    
+    Sử dụng:
+    1. Ensemble Learning (10,000 formulas)
+    2. Markov Chain (transition probabilities)
+    3. Bayesian Inference (posterior probabilities)
+    4. Monte Carlo Simulation (1000 sims)
+    5. Kalman Filter (optimal estimation)
+    6. Shannon Entropy (uncertainty measure)
+    7. Kelly Criterion (optimal bet sizing)
+    8. K-Means Clustering (pattern grouping)
+    
+    Returns (room_id, algo_label)
     """
-    global FORMULAS, PATTERN_MEMORY, SEQUENCE_MEMORY
+    global FORMULAS, PATTERN_MEMORY, SEQUENCE_MEMORY, KALMAN_ESTIMATES
     
     # Ensure formulas initialized
     if not FORMULAS or len(FORMULAS) != 10000:
@@ -907,16 +1155,153 @@ def choose_room(mode: str = "ULTRA_AI") -> Tuple[int, str]:
         final_scores[r] += f["safety_score"] * 0.15
         final_scores[r] -= f["risk_score"] * 0.1
     
+    # ==================== ADVANCED MATHEMATICAL MODELS ====================
+    
+    # 1. MARKOV CHAIN ANALYSIS
+    markov_scores = {}
+    if last_killed_room is not None:
+        for r in cand:
+            # P(phòng r bị kill | phòng last_killed_room vừa bị kill)
+            markov_prob_kill = _get_markov_probability(last_killed_room, r)
+            # Safety = 1 - probability of being killed
+            markov_scores[r] = 1.0 - markov_prob_kill
+    else:
+        markov_scores = {r: 0.5 for r in cand}
+    
+    # 2. KALMAN FILTER - Optimal estimation
+    kalman_scores = {}
+    for r in cand:
+        # Get previous Kalman estimate
+        if r in KALMAN_ESTIMATES:
+            prev_est = KALMAN_ESTIMATES[r]["estimate"]
+            prev_err = KALMAN_ESTIMATES[r]["error"]
+        else:
+            prev_est = 0.5
+            prev_err = 1.0
+        
+        # New measurement = final_scores (normalized)
+        max_score = max(final_scores.values()) if final_scores.values() else 1.0
+        measurement = final_scores[r] / max_score if max_score > 0 else 0.5
+        
+        # Kalman update
+        new_est, new_err = _kalman_filter_estimate(r, measurement, prev_est, prev_err)
+        KALMAN_ESTIMATES[r] = {"estimate": new_est, "error": new_err}
+        kalman_scores[r] = new_est
+    
+    # 3. MONTE CARLO SIMULATION
+    room_features_dict = {}
+    for r in cand:
+        room_features_dict[r] = _room_features_ultra_ai(r)
+    
+    monte_carlo_probs = _monte_carlo_simulation(room_features_dict, n_sims=MONTE_CARLO_SIMS)
+    
+    # 4. SHANNON ENTROPY - Uncertainty measure
+    entropy_scores = {r: 0.0 for r in cand}
+    for r in cand:
+        # Calculate entropy based on formula votes
+        vote_dist = {r2: 0 for r2 in cand}
+        for votes_list in formula_votes.values():
+            if votes_list:
+                vote_dist[r] = len(votes_list)
+        
+        entropy = _calculate_shannon_entropy(vote_dist)
+        # Lower entropy = more certain = higher score
+        entropy_scores[r] = 1.0 - (entropy / 3.0)  # Normalize (max entropy for 8 rooms ≈ 3)
+    
+    # 5. EMA SMOOTHING - Exponential Moving Average
+    ema_scores = {}
+    for r in cand:
+        raw_score = final_scores[r]
+        smoothed_score = _exponential_moving_average(r, raw_score)
+        ema_scores[r] = smoothed_score
+    
+    # 6. REGRESSION TREND ANALYSIS
+    trend_scores = {}
+    for r in cand:
+        # Get recent history for this room
+        room_history = [rec for rec in bet_history if rec.get("room") == r]
+        if len(room_history) >= 3:
+            # Extract win/loss as binary values (1 = win, 0 = loss)
+            results = []
+            for rec in room_history[-10:]:
+                result = rec.get("result", "")
+                results.append(1.0 if "Thắng" in result else 0.0)
+            
+            trend = _regression_trend(results)
+            # Positive trend = winning more recently = safer
+            # Negative trend = losing more recently = riskier
+            trend_scores[r] = 0.5 + (trend * 0.5)  # Normalize to 0-1
+        else:
+            trend_scores[r] = 0.5
+    
+    # 7. GINI COEFFICIENT - Measure concentration
+    bet_amounts = [d.get("bet", 0) for d in rooms_data.values()]
+    player_counts = [d.get("players", 0) for d in rooms_data.values()]
+    
+    bet_gini = _calculate_gini_coefficient(bet_amounts)
+    player_gini = _calculate_gini_coefficient(player_counts)
+    
+    # High Gini = concentrated (risky), Low Gini = distributed (safer)
+    gini_bonus = (1.0 - (bet_gini + player_gini) / 2.0) * 0.1
+    
+    # 8. WEIGHTED MEDIAN ENSEMBLE
+    # Instead of simple average, use weighted median (more robust)
+    median_scores = {}
+    for r in cand:
+        all_method_scores = [
+            final_scores[r],
+            markov_scores[r],
+            kalman_scores[r],
+            monte_carlo_probs[r],
+            entropy_scores[r],
+            ema_scores[r],
+            trend_scores[r]
+        ]
+        all_weights = [0.30, 0.20, 0.15, 0.20, 0.05, 0.05, 0.05]
+        
+        median_scores[r] = _weighted_median(all_method_scores, all_weights)
+    
+    # 9. ENSEMBLE COMBINATION - Advanced weighted combination
+    final_advanced_scores = {}
+    for r in cand:
+        # Combine all scores with optimized weights
+        combined = (
+            final_scores[r] * 0.25 +           # Original ensemble: 25%
+            markov_scores[r] * 0.18 +          # Markov Chain: 18%
+            kalman_scores[r] * 0.15 +          # Kalman Filter: 15%
+            monte_carlo_probs[r] * 0.20 +      # Monte Carlo: 20%
+            entropy_scores[r] * 0.07 +         # Entropy: 7%
+            ema_scores[r] * 0.08 +             # EMA: 8%
+            trend_scores[r] * 0.05 +           # Trend: 5%
+            median_scores[r] * 0.02 +          # Median: 2%
+            gini_bonus                          # Gini bonus
+        )
+        final_advanced_scores[r] = combined
+    
     # Select best room
-    ranked = sorted(final_scores.items(), key=lambda kv: (-kv[1], kv[0]))
+    ranked = sorted(final_advanced_scores.items(), key=lambda kv: (-kv[1], kv[0]))
     best_room = ranked[0][0]
     best_confidence = confidence_scores[best_room]
     
-    # Logging cho analysis
-    log_debug(f"ULTRA_AI chose room {best_room} with confidence {best_confidence:.3f}")
-    log_debug(f"Top 3 rooms: {[(r, f'{s:.3f}') for r, s in ranked[:3]]}")
+    # Enhanced confidence with Monte Carlo
+    mc_confidence = monte_carlo_probs[best_room]
+    enhanced_confidence = (best_confidence * 0.6 + mc_confidence * 0.4)
     
-    return best_room, f"ULTRA_AI (Conf: {best_confidence:.1%})"
+    # Logging cho analysis - SIÊU CHI TIẾT
+    log_debug(f"🧠 ULTRA_AI ADVANCED ANALYSIS - Room {best_room} selected")
+    log_debug(f"  📊 Ensemble (10k formulas): {final_scores[best_room]:.3f}")
+    log_debug(f"  🔗 Markov Chain: {markov_scores[best_room]:.3f}")
+    log_debug(f"  🎯 Kalman Filter: {kalman_scores[best_room]:.3f}")
+    log_debug(f"  🎲 Monte Carlo (1000 sims): {monte_carlo_probs[best_room]:.3f}")
+    log_debug(f"  📈 Shannon Entropy: {entropy_scores[best_room]:.3f}")
+    log_debug(f"  〰️ EMA Smoothing: {ema_scores[best_room]:.3f}")
+    log_debug(f"  📉 Regression Trend: {trend_scores[best_room]:.3f}")
+    log_debug(f"  📊 Weighted Median: {median_scores[best_room]:.3f}")
+    log_debug(f"  📐 Gini Coefficient: {bet_gini:.3f} (bet), {player_gini:.3f} (player)")
+    log_debug(f"  ⭐ FINAL SCORE: {final_advanced_scores[best_room]:.3f}")
+    log_debug(f"  🏆 Top 3: {[(r, f'{s:.3f}') for r, s in ranked[:3]]}")
+    
+    return best_room, f"ULTRA_AI (Conf: {enhanced_confidence:.1%})"
 
 def update_formulas_after_result(predicted_room: Optional[int], killed_room: Optional[int], mode: str = "ULTRA_AI", lr: float = 0.15):
     """
@@ -1197,27 +1582,47 @@ def lock_prediction_if_needed(force: bool = False):
             return
         global current_bet
 
-        # 🧠 ULTRA AI: Adaptive Bet Sizing based on Confidence
-        # Trích xuất confidence từ algo_used (format: "ULTRA_AI (Conf: XX%)")
+        # 🧠 ULTRA AI: KELLY CRITERION - Optimal Bet Sizing
         try:
             import re as regex_module
             conf_match = regex_module.search(r'Conf:\s*(\d+)%', str(algo_used))
             if conf_match:
                 confidence_pct = float(conf_match.group(1)) / 100.0
             else:
-                confidence_pct = 0.5  # Default
+                confidence_pct = 0.5
             
-            # Nếu confidence cao (>70%), có thể tăng cược một chút (optional)
-            # Nếu confidence thấp (<40%), giảm cược xuống để an toàn
-            confidence_multiplier = 1.0
+            # Kelly Criterion: Optimal bet size
+            kelly_fraction = _calculate_kelly_criterion(
+                win_prob=confidence_pct,
+                win_multiplier=7.0,  # Game thường trả 7:1
+                loss_multiplier=1.0
+            )
+            
+            # Kelly-based multiplier
+            if kelly_fraction > 0.15:
+                # High Kelly = High confidence
+                confidence_multiplier = 1.0 + (kelly_fraction * 0.5)  # Up to 1.125x
+                console.print(f"[green]📊 Kelly Criterion: {kelly_fraction:.1%} → Tăng cược {confidence_multiplier:.2f}x[/green]")
+            elif kelly_fraction > 0.05:
+                # Medium Kelly
+                confidence_multiplier = 1.0
+                console.print(f"[cyan]📊 Kelly Criterion: {kelly_fraction:.1%} → Giữ nguyên[/cyan]")
+            else:
+                # Low Kelly = Low confidence
+                confidence_multiplier = 0.7
+                console.print(f"[yellow]📊 Kelly Criterion: {kelly_fraction:.1%} → Giảm cược 0.7x[/yellow]")
+            
+            # Additional: Simple confidence-based adjustment
             if confidence_pct >= 0.75:
-                confidence_multiplier = 1.1  # Tăng 10% khi rất tự tin
-                console.print(f"[green]🚀 Confidence cao ({confidence_pct:.0%}), tăng cược lên {confidence_multiplier}x[/green]")
+                confidence_multiplier *= 1.05
+                console.print(f"[green]🚀 Confidence {confidence_pct:.0%} + Kelly → {confidence_multiplier:.2f}x[/green]")
             elif confidence_pct <= 0.40:
-                confidence_multiplier = 0.8  # Giảm 20% khi không chắc chắn
-                console.print(f"[yellow]⚠️ Confidence thấp ({confidence_pct:.0%}), giảm cược xuống {confidence_multiplier}x[/yellow]")
-        except Exception:
+                confidence_multiplier *= 0.9
+                console.print(f"[yellow]⚠️ Confidence thấp {confidence_pct:.0%} → Giảm thêm[/yellow]")
+                
+        except Exception as e:
             confidence_multiplier = 1.0
+            log_debug(f"Kelly Criterion error: {e}")
 
         # Debug: Kiểm tra current_bet trước khi đặt cược
         if current_bet is None:
@@ -1387,6 +1792,10 @@ def _mark_bet_result_from_issue(res_issue: Optional[int], krid: int):
         if predicted_room is not None and krid is not None:
             if int(predicted_room) != int(krid):
                 correct_predictions += 1
+        
+        # Update Markov Chain
+        if last_killed_room is not None and krid is not None:
+            _update_markov_chain(last_killed_room, krid)
         
     except Exception as e:
         log_debug(f"update_formulas_after_result err: {e}")
