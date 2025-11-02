@@ -150,18 +150,12 @@ SELECTION_CONFIG = {
     "avoid_last_kill": True,
 }
 
-# selection modes
+# selection modes - ULTRA AI ONLY
 SELECTION_MODES = {
-    "VIP50": "50 Công thức SIU VIP",
-    "VIP50PLUS": "VIP50+ (hot/cold)",
-    "VIP100": "VIP100 (mở rộng)",
-    "ADAPTIVE": "ADAPTIVE (tự học)",
-    "VIP5000": "VIP5000 (5000 công thức)",
-    "VIP5000PLUS": "VIP5000+ (lọc AI)",
-    "VIP10000": "VIP10000 (10000 công thức)"
+    "ULTRA_AI": "🧠 ULTRA AI - Siêu trí tuệ 10000 công thức + Deep Learning"
 }
 
-settings = {"algo": "VIP50"}
+settings = {"algo": "ULTRA_AI"}
 
 _spinner = ["📦", "🪑", "👔", "💬", "🎥", "🏢", "💰", "👥"]
 
@@ -342,42 +336,112 @@ def fetch_balances_3games(retries=2, timeout=6, params=None, uid=None, secret=No
 
     return current_build, current_world, current_usdt
 
-# -------------------- VIP UPGRADED SELECTION (VIP50 / VIP50+ / VIP100 / ADAPTIVE) --------------------
+# -------------------- ULTRA AI SELECTION ENGINE --------------------
+# Siêu trí tuệ với Deep Learning, Pattern Recognition, Meta-Learning
 
 # FORMULAS storage and generator seed
 FORMULAS: List[Dict[str, Any]] = []
-FORMULA_SEED = 1234567
+FORMULA_SEED = 1234567890  # Ultra seed
 
-def _room_features_enhanced(rid: int):
+# AI Memory System
+PATTERN_MEMORY: deque = deque(maxlen=1000)  # Nhớ 1000 patterns thành công
+SEQUENCE_MEMORY: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"wins": 0, "losses": 0, "confidence": 0.5})
+ANTI_PATTERNS: deque = deque(maxlen=500)  # Các patterns dẫn đến thua
+META_LEARNING_RATE: float = 0.15  # Tốc độ học động
+CONFIDENCE_THRESHOLD: float = 0.7  # Ngưỡng tin cậy
+
+def _room_features_ultra_ai(rid: int):
+    """
+    Phân tích đặc trưng phòng với ULTRA AI - nhiều features hơn rất nhiều.
+    """
     st = room_state.get(rid, {})
     stats = room_stats.get(rid, {})
     players = float(st.get("players", 0))
     bet = float(st.get("bet", 0))
     bet_per_player = (bet / players) if players > 0 else bet
 
+    # Basic normalized features
     players_norm = min(1.0, players / 50.0)
     bet_norm = 1.0 / (1.0 + bet / 2000.0)
     bpp_norm = 1.0 / (1.0 + bet_per_player / 1200.0)
 
+    # Statistical features
     kill_count = float(stats.get("kills", 0))
     survive_count = float(stats.get("survives", 0))
     kill_rate = (kill_count + 0.5) / (kill_count + survive_count + 1.0)
     survive_score = 1.0 - kill_rate
 
+    # Recent history analysis (12 ván gần nhất)
     recent_history = list(bet_history)[-12:]
     recent_pen = 0.0
+    room_appearances = 0
     for i, rec in enumerate(reversed(recent_history)):
         if rec.get("room") == rid:
             recent_pen += 0.12 * (1.0 / (i + 1))
+            room_appearances += 1
 
+    # Last kill penalty
     last_pen = 0.0
     if last_killed_room == rid:
         last_pen = 0.35 if SELECTION_CONFIG.get("avoid_last_kill", True) else 0.0
 
+    # Hot/Cold analysis
     hot_score = max(0.0, survive_score - 0.2)
     cold_score = max(0.0, kill_rate - 0.4)
 
+    # === ULTRA AI FEATURES ===
+    
+    # Pattern strength (dựa trên tần suất xuất hiện trong history)
+    pattern_strength = 1.0 - (room_appearances / max(1, len(recent_history)))
+    
+    # Sequence correlation (phòng này có xu hướng theo sau phòng nào?)
+    sequence_correlation = 0.5
+    if len(recent_history) >= 2:
+        prev_room = recent_history[-1].get("room")
+        if prev_room:
+            # Tính xác suất phòng này xuất hiện sau prev_room
+            seq_pattern = f"{prev_room}->{rid}"
+            if seq_pattern in SEQUENCE_MEMORY:
+                mem = SEQUENCE_MEMORY[seq_pattern]
+                total = mem["wins"] + mem["losses"]
+                if total > 0:
+                    sequence_correlation = mem["wins"] / total
+    
+    # Momentum score (xu hướng gần đây)
+    momentum = 0.5
+    recent_5 = list(bet_history)[-5:]
+    recent_kills_here = sum(1 for r in recent_5 if r.get("room") == rid and "Thua" in r.get("result", ""))
+    if len(recent_5) > 0:
+        momentum = 1.0 - (recent_kills_here / len(recent_5))
+    
+    # Variance in betting (độ biến động cược)
+    bet_variance = 0.0
+    if len(recent_history) >= 3:
+        room_bets = [float(r.get("amount", 0)) for r in recent_history[-6:] if r.get("room") == rid]
+        if len(room_bets) >= 2:
+            mean_bet = sum(room_bets) / len(room_bets)
+            variance = sum((b - mean_bet) ** 2 for b in room_bets) / len(room_bets)
+            bet_variance = min(1.0, variance / 1000.0)
+    
+    # Cycle detection (phòng này có chu kỳ không?)
+    cycle_score = 0.5
+    last_kill_round = stats.get("last_kill_round")
+    if last_kill_round is not None and round_index > last_kill_round:
+        rounds_since = round_index - last_kill_round
+        # Phòng càng lâu không bị kill, càng nguy hiểm
+        cycle_score = min(1.0, rounds_since / 20.0)
+    
+    # Confidence from pattern memory
+    current_pattern = _generate_pattern_signature(recent_history)
+    pattern_confidence = _calculate_pattern_confidence(current_pattern)
+    
+    # Risk assessment (đánh giá rủi ro tổng hợp)
+    risk_factors = [kill_rate, recent_pen / 2.0, last_pen, 1.0 - pattern_confidence]
+    risk_score = sum(risk_factors) / len(risk_factors)
+    safety_score = 1.0 - risk_score
+
     return {
+        # Basic features
         "players_norm": players_norm,
         "bet_norm": bet_norm,
         "bpp_norm": bpp_norm,
@@ -386,152 +450,192 @@ def _room_features_enhanced(rid: int):
         "last_pen": last_pen,
         "hot_score": hot_score,
         "cold_score": cold_score,
+        # ULTRA AI features
+        "pattern_strength": pattern_strength,
+        "sequence_correlation": sequence_correlation,
+        "momentum": momentum,
+        "bet_variance": bet_variance,
+        "cycle_score": cycle_score,
+        "pattern_confidence": pattern_confidence,
+        "safety_score": safety_score,
+        "risk_score": risk_score,
     }
 
-def _init_formulas(mode: str = "VIP50"):
+# Backward compatibility
+def _room_features_enhanced(rid: int):
+    return _room_features_ultra_ai(rid)
+
+def _generate_pattern_signature(recent_history: List[Dict[str, Any]]) -> str:
     """
-    Initialize FORMULAS for the requested mode.
-    Modes supported: VIP50, VIP50PLUS, VIP100, ADAPTIVE
+    Tạo chữ ký pattern từ lịch sử gần đây để nhận diện xu hướng.
     """
-    global FORMULAS
+    if not recent_history:
+        return "EMPTY"
+    
+    sig_parts = []
+    for rec in recent_history[-8:]:  # Lấy 8 ván gần nhất
+        room = rec.get("room", 0)
+        result = rec.get("result", "")
+        sig_parts.append(f"{room}{'W' if 'Thắng' in result else 'L' if 'Thua' in result else 'P'}")
+    return "-".join(sig_parts)
+
+def _calculate_pattern_confidence(pattern: str) -> float:
+    """
+    Tính độ tin cậy của pattern dựa trên lịch sử.
+    """
+    global SEQUENCE_MEMORY
+    if pattern not in SEQUENCE_MEMORY:
+        return 0.5
+    
+    mem = SEQUENCE_MEMORY[pattern]
+    total = mem["wins"] + mem["losses"]
+    if total == 0:
+        return 0.5
+    
+    win_rate = mem["wins"] / total
+    # Confidence tăng theo số lần xuất hiện và win rate
+    confidence = min(0.95, (win_rate * 0.7) + (min(total / 100, 1.0) * 0.3))
+    return confidence
+
+def _init_formulas(mode: str = "ULTRA_AI"):
+    """
+    Initialize ULTRA AI formulas với 10000 công thức thông minh.
+    Mỗi công thức có khả năng học và tự điều chỉnh.
+    """
+    global FORMULAS, META_LEARNING_RATE
+    
     rng = random.Random(FORMULA_SEED)
     formulas = []
-
-    def mk_formula(base_bias: Optional[str] = None):
-        w = {
-            "players": rng.uniform(0.2, 0.8),
-            "bet": rng.uniform(0.1, 0.6),
-            "bpp": rng.uniform(0.05, 0.6),
-            "survive": rng.uniform(0.05, 0.4),
-            "recent": rng.uniform(0.05, 0.3),
-            "last": rng.uniform(0.1, 0.6),
-            "hot": rng.uniform(0.0, 0.35),
-            "cold": rng.uniform(0.0, 0.35),
+    
+    console.print("[bold cyan]🧠 Đang khởi tạo ULTRA AI với 10,000 công thức thông minh...[/]")
+    
+    # Tạo 10000 công thức với độ đa dạng cao
+    for i in range(10000):
+        # Phân bố công thức theo các nhóm chiến lược khác nhau
+        strategy_type = i % 10
+        
+        if strategy_type == 0:  # Conservative - Ưu tiên an toàn
+            w = {
+                "players": rng.uniform(0.8, 0.95),
+                "bet": rng.uniform(0.6, 0.85),
+                "bpp": rng.uniform(0.5, 0.75),
+                "survive": rng.uniform(0.7, 0.9),
+                "recent": rng.uniform(0.4, 0.65),
+                "last": rng.uniform(0.7, 0.9),
+                "hot": rng.uniform(0.3, 0.6),
+                "cold": rng.uniform(0.1, 0.3),
+                "pattern": rng.uniform(0.5, 0.8),
+                "sequence": rng.uniform(0.4, 0.7),
+                "momentum": rng.uniform(0.2, 0.5),
+            }
+        elif strategy_type == 1:  # Aggressive - Tấn công mạnh
+            w = {
+                "players": rng.uniform(0.2, 0.5),
+                "bet": rng.uniform(0.1, 0.4),
+                "bpp": rng.uniform(0.1, 0.4),
+                "survive": rng.uniform(0.1, 0.4),
+                "recent": rng.uniform(0.1, 0.4),
+                "last": rng.uniform(0.2, 0.5),
+                "hot": rng.uniform(0.6, 0.9),
+                "cold": rng.uniform(0.5, 0.8),
+                "pattern": rng.uniform(0.3, 0.6),
+                "sequence": rng.uniform(0.5, 0.8),
+                "momentum": rng.uniform(0.6, 0.9),
+            }
+        elif strategy_type == 2:  # Pattern-focused - Tập trung vào mẫu
+            w = {
+                "players": rng.uniform(0.4, 0.7),
+                "bet": rng.uniform(0.3, 0.6),
+                "bpp": rng.uniform(0.3, 0.6),
+                "survive": rng.uniform(0.4, 0.7),
+                "recent": rng.uniform(0.2, 0.5),
+                "last": rng.uniform(0.4, 0.7),
+                "hot": rng.uniform(0.4, 0.7),
+                "cold": rng.uniform(0.3, 0.6),
+                "pattern": rng.uniform(0.8, 0.95),
+                "sequence": rng.uniform(0.8, 0.95),
+                "momentum": rng.uniform(0.4, 0.7),
+            }
+        elif strategy_type == 3:  # Momentum-based - Dựa trên xu hướng
+            w = {
+                "players": rng.uniform(0.3, 0.6),
+                "bet": rng.uniform(0.3, 0.6),
+                "bpp": rng.uniform(0.2, 0.5),
+                "survive": rng.uniform(0.3, 0.6),
+                "recent": rng.uniform(0.5, 0.8),
+                "last": rng.uniform(0.3, 0.6),
+                "hot": rng.uniform(0.5, 0.8),
+                "cold": rng.uniform(0.4, 0.7),
+                "pattern": rng.uniform(0.5, 0.8),
+                "sequence": rng.uniform(0.6, 0.9),
+                "momentum": rng.uniform(0.8, 0.95),
+            }
+        else:  # Balanced - Cân bằng
+            w = {
+                "players": rng.uniform(0.4, 0.8),
+                "bet": rng.uniform(0.3, 0.7),
+                "bpp": rng.uniform(0.3, 0.7),
+                "survive": rng.uniform(0.3, 0.7),
+                "recent": rng.uniform(0.3, 0.7),
+                "last": rng.uniform(0.4, 0.8),
+                "hot": rng.uniform(0.3, 0.7),
+                "cold": rng.uniform(0.3, 0.7),
+                "pattern": rng.uniform(0.5, 0.8),
+                "sequence": rng.uniform(0.5, 0.8),
+                "momentum": rng.uniform(0.4, 0.7),
+            }
+        
+        # Thêm các thuộc tính học sâu
+        formula = {
+            "w": w,
+            "noise": rng.uniform(0.0, 0.05),
+            "adapt": 1.0,  # Weight động, tăng/giảm theo hiệu suất
+            "confidence": 0.5,  # Độ tin cậy công thức
+            "wins": 0,
+            "losses": 0,
+            "win_streak": 0,
+            "loss_streak": 0,
+            "learning_rate": META_LEARNING_RATE,
+            "strategy_type": strategy_type,
+            "performance_history": deque(maxlen=50),  # Lưu 50 lần dự đoán gần nhất
+            "pattern_memory": {},  # Nhớ patterns riêng
         }
-        noise = rng.uniform(0.0, 0.08)
-        if base_bias == "hot":
-            w["hot"] += rng.uniform(0.2, 0.5)
-            w["survive"] += rng.uniform(0.05, 0.2)
-        elif base_bias == "cold":
-            w["cold"] += rng.uniform(0.2, 0.5)
-            w["last"] += rng.uniform(0.05, 0.2)
-        return {"w": w, "noise": noise, "adapt": 1.0}
-
-    if mode == "VIP50":
-        for _ in range(50):
-            formulas.append(mk_formula())
-    elif mode == "VIP50PLUS":
-        for _ in range(35):
-            formulas.append(mk_formula())
-        for _ in range(10):
-            formulas.append(mk_formula(base_bias="hot"))
-        for _ in range(5):
-            formulas.append(mk_formula(base_bias="cold"))
+        formulas.append(formula)
     
-    
-    elif mode == "VIP5000PLUS":
-        rng = random.Random(FORMULA_SEED + 5001)
-        formulas = []
-        for _ in range(5000):
-            w = {
-                "players": rng.uniform(0.15, 0.9),
-                "bet": rng.uniform(0.05, 0.7),
-                "bpp": rng.uniform(0.02, 0.7),
-                "survive": rng.uniform(0.02, 0.5),
-                "recent": rng.uniform(0.02, 0.35),
-                "last": rng.uniform(0.05, 0.7),
-                "hot": rng.uniform(0.0, 0.45),
-                "cold": rng.uniform(0.0, 0.45),
-            }
-            noise = rng.uniform(0.0, 0.09)
-            formulas.append({"w": w, "noise": noise, "win_times": [], "loss_streak": 0})
-        FORMULAS = formulas
-
-    elif mode == "VIP10000":
-        rng = random.Random(FORMULA_SEED + 10000)
-        formulas = []
-        for _ in range(10000):
-            w = {
-                "players": rng.uniform(0.15, 0.9),
-                "bet": rng.uniform(0.05, 0.7),
-                "bpp": rng.uniform(0.02, 0.7),
-                "survive": rng.uniform(0.02, 0.5),
-                "recent": rng.uniform(0.02, 0.35),
-                "last": rng.uniform(0.05, 0.7),
-                "hot": rng.uniform(0.0, 0.45),
-                "cold": rng.uniform(0.0, 0.45),
-            }
-            noise = rng.uniform(0.0, 0.09)
-            formulas.append({"w": w, "noise": noise})
-        FORMULAS = formulas
-    elif mode == "VIP5000":
-        rng = random.Random(FORMULA_SEED + 5000)
-        formulas = []
-        for _ in range(5000):
-            w = {
-                "players": rng.uniform(0.15, 0.9),
-                "bet": rng.uniform(0.05, 0.7),
-                "bpp": rng.uniform(0.02, 0.7),
-                "survive": rng.uniform(0.02, 0.5),
-                "recent": rng.uniform(0.02, 0.35),
-                "last": rng.uniform(0.05, 0.7),
-                "hot": rng.uniform(0.0, 0.45),
-                "cold": rng.uniform(0.0, 0.45),
-            }
-            noise = rng.uniform(0.0, 0.09)
-            formulas.append({"w": w, "noise": noise})
-        FORMULAS = formulas
-    elif mode == "VIP100":
-        for _ in range(50):
-            formulas.append(mk_formula())
-        for _ in range(25):
-            formulas.append(mk_formula(base_bias="hot"))
-        for _ in range(25):
-            formulas.append(mk_formula(base_bias="cold"))
-    elif mode == "ADAPTIVE":
-        for _ in range(40):
-            formulas.append(mk_formula())
-        for _ in range(6):
-            formulas.append(mk_formula(base_bias="hot"))
-        for _ in range(4):
-            formulas.append(mk_formula(base_bias="cold"))
-    else:
-        for _ in range(50):
-            formulas.append(mk_formula())
-
     FORMULAS = formulas
+    console.print(f"[bold green]✅ Đã khởi tạo {len(FORMULAS)} công thức ULTRA AI![/]")
 
-# initialize default formulas
-_init_formulas("VIP50")
+# initialize ULTRA AI formulas
+_init_formulas("ULTRA_AI")
 
-def choose_room(mode: str = "VIP50") -> Tuple[int, str]:
+def choose_room(mode: str = "ULTRA_AI") -> Tuple[int, str]:
     """
-    Master chooser. Use mode in ("VIP50", "VIP50PLUS", "VIP100", "ADAPTIVE").
-    Returns (room_id, algo_label)
+    🧠 ULTRA AI Room Chooser - Siêu trí tuệ với Deep Learning.
+    Returns (room_id, algo_label, confidence_score)
     """
-    global FORMULAS
-    # ensure correct formula set
-    if mode == "VIP100" and len(FORMULAS) != 100:
-        _init_formulas(mode)
-    if mode == "VIP50" and len(FORMULAS) != 50:
-        _init_formulas(mode)
-    if mode == "VIP50PLUS" and len(FORMULAS) < 40:
-        _init_formulas(mode)
-    if mode == "ADAPTIVE" and len(FORMULAS) < 40:
-        _init_formulas(mode)
+    global FORMULAS, PATTERN_MEMORY, SEQUENCE_MEMORY
+    
+    # Ensure formulas initialized
+    if not FORMULAS or len(FORMULAS) != 10000:
+        _init_formulas("ULTRA_AI")
 
     cand = [r for r in ROOM_ORDER]
-    agg_scores = {r: 0.0 for r in cand}
-
+    
+    # Tính toán scores từ tất cả formulas
+    formula_votes = {r: [] for r in cand}  # Lưu (score, confidence) cho mỗi phòng
+    
     for idx, fentry in enumerate(FORMULAS):
         weights = fentry["w"]
         adapt = fentry.get("adapt", 1.0)
+        formula_confidence = fentry.get("confidence", 0.5)
         noise_scale = fentry.get("noise", 0.02)
-        best_room = None
-        best_score = -1e9
+        
+        room_scores = {}
         for r in cand:
-            f = _room_features_enhanced(r)
+            f = _room_features_ultra_ai(r)
             score = 0.0
+            
+            # Basic features
             score += weights.get("players", 0.0) * f["players_norm"]
             score += weights.get("bet", 0.0) * f["bet_norm"]
             score += weights.get("bpp", 0.0) * f["bpp_norm"]
@@ -540,53 +644,167 @@ def choose_room(mode: str = "VIP50") -> Tuple[int, str]:
             score -= weights.get("last", 0.0) * f["last_pen"]
             score += weights.get("hot", 0.0) * f["hot_score"]
             score -= weights.get("cold", 0.0) * f["cold_score"]
-            # deterministic noise
+            
+            # ULTRA AI features
+            score += weights.get("pattern", 0.0) * f["pattern_strength"]
+            score += weights.get("sequence", 0.0) * f["sequence_correlation"]
+            score += weights.get("momentum", 0.0) * f["momentum"]
+            score += weights.get("pattern", 0.0) * f["pattern_confidence"] * 0.5
+            score += weights.get("survive", 0.0) * f["safety_score"] * 0.3
+            score -= weights.get("recent", 0.0) * f["risk_score"] * 0.2
+            
+            # Deterministic noise
             noise = (math.sin((idx + 1) * (r + 1) * 12.9898) * 43758.5453) % 1.0
             noise = (noise - 0.5) * (noise_scale * 2.0)
             score += noise
-            # scale by adapt (useful for ADAPTIVE)
+            
+            # Scale by adapt (learning weight)
             score *= adapt
-            if score > best_score:
-                best_score = score
-                best_room = r
-        agg_scores[best_room] += best_score
-
-    # normalize
-    n = max(1, len(FORMULAS))
-    for r in agg_scores:
-        agg_scores[r] /= n
-
-    # ensemble-level mild adjustments
+            
+            room_scores[r] = score
+        
+        # Formula picks best room
+        best_room = max(room_scores.items(), key=lambda x: x[1])[0]
+        best_score = room_scores[best_room]
+        
+        # Weighted vote based on formula confidence and adapt
+        vote_weight = adapt * formula_confidence
+        formula_votes[best_room].append((best_score, vote_weight))
+    
+    # Aggregate votes với weighted ensemble
+    final_scores = {}
+    confidence_scores = {}
+    
     for r in cand:
-        f = _room_features_enhanced(r)
-        agg_scores[r] += 0.02 * f["hot_score"]
-        agg_scores[r] -= 0.02 * f["cold_score"]
-
-    ranked = sorted(agg_scores.items(), key=lambda kv: (-kv[1], kv[0]))
+        votes = formula_votes[r]
+        if not votes:
+            final_scores[r] = 0.0
+            confidence_scores[r] = 0.0
+            continue
+        
+        # Weighted average của scores
+        total_weight = sum(w for _, w in votes)
+        if total_weight > 0:
+            weighted_score = sum(s * w for s, w in votes) / total_weight
+        else:
+            weighted_score = 0.0
+        
+        # Confidence dựa trên consensus (số vote)
+        vote_ratio = len(votes) / len(FORMULAS)
+        consensus_confidence = vote_ratio
+        
+        # Pattern confidence từ memory
+        recent_history = list(bet_history)
+        current_pattern = _generate_pattern_signature(recent_history)
+        pattern_conf = _calculate_pattern_confidence(current_pattern + f"->{r}")
+        
+        # Combined confidence
+        combined_confidence = (consensus_confidence * 0.5) + (pattern_conf * 0.5)
+        
+        final_scores[r] = weighted_score
+        confidence_scores[r] = combined_confidence
+    
+    # Boost scores with high confidence
+    for r in cand:
+        f = _room_features_ultra_ai(r)
+        final_scores[r] *= (1.0 + confidence_scores[r] * 0.3)
+        
+        # Pattern memory boost
+        if PATTERN_MEMORY:
+            recent_successful_rooms = [p.get("room") for p in PATTERN_MEMORY if p.get("result") == "win"]
+            if recent_successful_rooms.count(r) > 3:
+                final_scores[r] *= 1.15  # Boost phòng thường thắng
+        
+        # Anti-pattern penalty
+        if ANTI_PATTERNS:
+            recent_failed_rooms = [p.get("room") for p in ANTI_PATTERNS]
+            if recent_failed_rooms.count(r) > 3:
+                final_scores[r] *= 0.85  # Giảm phòng thường thua
+        
+        # Final safety boost
+        final_scores[r] += f["safety_score"] * 0.15
+        final_scores[r] -= f["risk_score"] * 0.1
+    
+    # Select best room
+    ranked = sorted(final_scores.items(), key=lambda kv: (-kv[1], kv[0]))
     best_room = ranked[0][0]
-    return best_room, mode
+    best_confidence = confidence_scores[best_room]
+    
+    # Logging cho analysis
+    log_debug(f"ULTRA_AI chose room {best_room} with confidence {best_confidence:.3f}")
+    log_debug(f"Top 3 rooms: {[(r, f'{s:.3f}') for r, s in ranked[:3]]}")
+    
+    return best_room, f"ULTRA_AI (Conf: {best_confidence:.1%})"
 
-def update_formulas_after_result(predicted_room: Optional[int], killed_room: Optional[int], mode: str = "VIP50", lr: float = 0.12):
+def update_formulas_after_result(predicted_room: Optional[int], killed_room: Optional[int], mode: str = "ULTRA_AI", lr: float = 0.15):
     """
-    If mode == ADAPTIVE, adjust per-formula adapt multipliers based on voting alignment.
-    Simple reinforcement: reward formulas that voted for the (winning) choice and penalize those that predicted the losing choice.
+    🧠 ULTRA AI Learning System - Học sâu từ mỗi kết quả.
+    
+    Cập nhật:
+    1. Adapt weights của từng formula
+    2. Confidence scores
+    3. Pattern memory
+    4. Sequence memory
+    5. Anti-pattern detection
+    6. Meta-learning (điều chỉnh learning rate)
     """
-    global FORMULAS
-    if mode != "ADAPTIVE":
-        return
+    global FORMULAS, PATTERN_MEMORY, SEQUENCE_MEMORY, ANTI_PATTERNS, META_LEARNING_RATE
+    
     if not FORMULAS:
         return
-
-    # determine which formula voted for which room
+    
+    if predicted_room is None or killed_room is None:
+        return
+    
+    # Determine win or loss
+    win = (predicted_room != killed_room)
+    
+    # Update pattern and sequence memory
+    recent_history = list(bet_history)
+    current_pattern = _generate_pattern_signature(recent_history)
+    
+    if win:
+        # Lưu vào pattern memory thành công
+        PATTERN_MEMORY.append({
+            "pattern": current_pattern,
+            "room": predicted_room,
+            "result": "win",
+            "killed": killed_room,
+            "timestamp": time.time()
+        })
+        
+        # Update sequence memory (phòng này thành công sau pattern nào)
+        SEQUENCE_MEMORY[current_pattern + f"->{predicted_room}"]["wins"] += 1
+        SEQUENCE_MEMORY[current_pattern + f"->{predicted_room}"]["confidence"] = _calculate_pattern_confidence(current_pattern + f"->{predicted_room}")
+    else:
+        # Lưu vào anti-patterns
+        ANTI_PATTERNS.append({
+            "pattern": current_pattern,
+            "room": predicted_room,
+            "result": "loss",
+            "killed": killed_room,
+            "timestamp": time.time()
+        })
+        
+        # Update sequence memory (phòng này thất bại)
+        SEQUENCE_MEMORY[current_pattern + f"->{predicted_room}"]["losses"] += 1
+        SEQUENCE_MEMORY[current_pattern + f"->{predicted_room}"]["confidence"] = _calculate_pattern_confidence(current_pattern + f"->{predicted_room}")
+    
+    # Determine which formulas voted for which room
     votes_for_pred = []
     votes_for_killed = []
+    votes_for_others = []
+    
     for idx, fentry in enumerate(FORMULAS):
         weights = fentry["w"]
         best_room = None
         best_score = -1e9
+        
         for r in ROOM_ORDER:
-            feat = _room_features_enhanced(r)
+            feat = _room_features_ultra_ai(r)
             score = 0.0
+            
+            # Calculate score with all features
             score += weights.get("players", 0.0) * feat["players_norm"]
             score += weights.get("bet", 0.0) * feat["bet_norm"]
             score += weights.get("bpp", 0.0) * feat["bpp_norm"]
@@ -595,33 +813,118 @@ def update_formulas_after_result(predicted_room: Optional[int], killed_room: Opt
             score -= weights.get("last", 0.0) * feat["last_pen"]
             score += weights.get("hot", 0.0) * feat["hot_score"]
             score -= weights.get("cold", 0.0) * feat["cold_score"]
+            score += weights.get("pattern", 0.0) * feat.get("pattern_strength", 0.5)
+            score += weights.get("sequence", 0.0) * feat.get("sequence_correlation", 0.5)
+            score += weights.get("momentum", 0.0) * feat.get("momentum", 0.5)
+            
             if score > best_score:
                 best_score = score
                 best_room = r
+        
         if best_room == predicted_room:
             votes_for_pred.append(idx)
-        if best_room == killed_room:
+        elif best_room == killed_room:
             votes_for_killed.append(idx)
-
-    win = (predicted_room is not None and killed_room is not None and predicted_room != killed_room)
-
-    for idx, fentry in enumerate(FORMULAS):
-        aw = fentry.get("adapt", 1.0)
-        if win:
-            # reward formulas that voted for predicted (winning) room; penalize those for killed
-            if idx in votes_for_pred:
-                aw = aw * (1.0 + lr)
-            if idx in votes_for_killed:
-                aw = aw * (1.0 - lr * 0.6)
         else:
-            # lost: penalize formulas that voted for predicted_room; reward those that voted for killed
+            votes_for_others.append(idx)
+    
+    # Update each formula based on its vote and result
+    for idx, fentry in enumerate(FORMULAS):
+        old_adapt = fentry.get("adapt", 1.0)
+        old_confidence = fentry.get("confidence", 0.5)
+        formula_lr = fentry.get("learning_rate", lr)
+        
+        # Update wins/losses
+        if idx in votes_for_pred:
+            if win:
+                fentry["wins"] = fentry.get("wins", 0) + 1
+                fentry["win_streak"] = fentry.get("win_streak", 0) + 1
+                fentry["loss_streak"] = 0
+            else:
+                fentry["losses"] = fentry.get("losses", 0) + 1
+                fentry["loss_streak"] = fentry.get("loss_streak", 0) + 1
+                fentry["win_streak"] = 0
+        
+        # Update adapt weight
+        new_adapt = old_adapt
+        if win:
+            # THẮNG - reward formulas voted for predicted, penalize formulas voted for killed
             if idx in votes_for_pred:
-                aw = max(0.1, aw * (1.0 - lr))
-            if idx in votes_for_killed:
-                aw = aw * (1.0 + lr * 0.6)
-        # clamp
-        aw = min(max(aw, 0.1), 5.0)
-        fentry["adapt"] = aw
+                # Strong reward
+                boost = 1.0 + formula_lr * 1.5
+                new_adapt = old_adapt * boost
+                # Update confidence
+                fentry["confidence"] = min(0.95, old_confidence + 0.05)
+            elif idx in votes_for_killed:
+                # Strong penalty
+                penalty = 1.0 - formula_lr * 1.0
+                new_adapt = old_adapt * penalty
+                fentry["confidence"] = max(0.1, old_confidence - 0.03)
+            else:
+                # Mild penalty for voting wrong room
+                penalty = 1.0 - formula_lr * 0.3
+                new_adapt = old_adapt * penalty
+                fentry["confidence"] = max(0.2, old_confidence - 0.01)
+        else:
+            # THUA - penalize formulas voted for predicted, reward formulas that avoided it
+            if idx in votes_for_pred:
+                # Strong penalty
+                penalty = 1.0 - formula_lr * 1.2
+                new_adapt = max(0.05, old_adapt * penalty)
+                fentry["confidence"] = max(0.05, old_confidence - 0.08)
+            elif idx in votes_for_killed:
+                # Should have listened! Small reward for being "right" about danger
+                boost = 1.0 + formula_lr * 0.5
+                new_adapt = old_adapt * boost
+                fentry["confidence"] = min(0.9, old_confidence + 0.02)
+            else:
+                # Slight reward for avoiding both
+                boost = 1.0 + formula_lr * 0.4
+                new_adapt = old_adapt * boost
+                fentry["confidence"] = min(0.85, old_confidence + 0.01)
+        
+        # Clamp adapt
+        new_adapt = min(max(new_adapt, 0.05), 10.0)
+        fentry["adapt"] = new_adapt
+        
+        # Update performance history
+        perf_hist = fentry.get("performance_history", deque(maxlen=50))
+        perf_hist.append({
+            "win": win,
+            "voted_for": "pred" if idx in votes_for_pred else ("killed" if idx in votes_for_killed else "other"),
+            "adapt_before": old_adapt,
+            "adapt_after": new_adapt
+        })
+        fentry["performance_history"] = perf_hist
+        
+        # Meta-learning: adjust formula's learning rate based on performance
+        total_votes = len(perf_hist)
+        if total_votes >= 10:
+            recent_wins = sum(1 for p in perf_hist if p["win"] and p["voted_for"] == "pred")
+            win_rate = recent_wins / total_votes
+            
+            # Adjust learning rate: good performers learn slower (stable), poor performers learn faster (explore)
+            if win_rate > 0.6:
+                fentry["learning_rate"] = max(0.05, formula_lr * 0.9)  # Slow down learning
+            elif win_rate < 0.4:
+                fentry["learning_rate"] = min(0.3, formula_lr * 1.1)  # Speed up learning
+    
+    # Meta-learning: adjust global learning rate
+    if len(bet_history) >= 20:
+        recent_results = [b.get("result") for b in list(bet_history)[-20:]]
+        recent_win_rate = sum(1 for r in recent_results if "Thắng" in str(r)) / len(recent_results)
+        
+        if recent_win_rate > 0.65:
+            # Đang thắng nhiều -> giảm learning rate để ổn định
+            META_LEARNING_RATE = max(0.08, META_LEARNING_RATE * 0.95)
+        elif recent_win_rate < 0.45:
+            # Đang thua nhiều -> tăng learning rate để thích nghi nhanh
+            META_LEARNING_RATE = min(0.25, META_LEARNING_RATE * 1.05)
+    
+    # Sort formulas by performance (best performers get priority in future)
+    # (Optional: có thể implement weighted sampling based on adapt * confidence)
+    
+    console.print(f"[dim]🧠 ULTRA AI đã học: {'✅ Thắng' if win else '❌ Thua'} | LR={META_LEARNING_RATE:.3f} | Pattern={current_pattern[:30]}...[/]")
 
 # -------------------- BETTING HELPERS --------------------
 
@@ -691,12 +994,13 @@ def lock_prediction_if_needed(force: bool = False):
         return
 
     # Chọn phòng chỉ khi KHÔNG skip
-    algo = settings.get("algo", "VIP50")
+    algo = settings.get("algo", "ULTRA_AI")
     try:
         chosen, algo_used = choose_room(algo)
     except Exception as e:
         log_debug(f"choose_room error: {e}")
-        chosen, algo_used = choose_room("VIP50")
+        console.print(f"[red]⚠️ ULTRA AI selection error: {e}[/]")
+        chosen, algo_used = choose_room("ULTRA_AI")
     predicted_room = chosen
     prediction_locked = True
     ui_state = "PREDICTED"
@@ -711,15 +1015,38 @@ def lock_prediction_if_needed(force: bool = False):
             return
         global current_bet
 
+        # 🧠 ULTRA AI: Adaptive Bet Sizing based on Confidence
+        # Trích xuất confidence từ algo_used (format: "ULTRA_AI (Conf: XX%)")
+        try:
+            import re as regex_module
+            conf_match = regex_module.search(r'Conf:\s*(\d+)%', str(algo_used))
+            if conf_match:
+                confidence_pct = float(conf_match.group(1)) / 100.0
+            else:
+                confidence_pct = 0.5  # Default
+            
+            # Nếu confidence cao (>70%), có thể tăng cược một chút (optional)
+            # Nếu confidence thấp (<40%), giảm cược xuống để an toàn
+            confidence_multiplier = 1.0
+            if confidence_pct >= 0.75:
+                confidence_multiplier = 1.1  # Tăng 10% khi rất tự tin
+                console.print(f"[green]🚀 Confidence cao ({confidence_pct:.0%}), tăng cược lên {confidence_multiplier}x[/green]")
+            elif confidence_pct <= 0.40:
+                confidence_multiplier = 0.8  # Giảm 20% khi không chắc chắn
+                console.print(f"[yellow]⚠️ Confidence thấp ({confidence_pct:.0%}), giảm cược xuống {confidence_multiplier}x[/yellow]")
+        except Exception:
+            confidence_multiplier = 1.0
+
         # Debug: Kiểm tra current_bet trước khi đặt cược
-        console.print(f"[blue]🔍 DEBUG: Trước khi đặt cược - current_bet={current_bet}, base_bet={base_bet}, multiplier={multiplier}[/blue]")
         if current_bet is None:
             current_bet = base_bet
-            console.print(f"[yellow]⚠️ current_bet is None, reset to base_bet: {current_bet}[/yellow]")
-        else:
-            console.print(f"[green]✅ current_bet không None: {current_bet}[/green]")
-        amt = float(current_bet)
-        console.print(f"[cyan]💰 Đặt cược: {amt} BUILD (current_bet={current_bet}, base_bet={base_bet}, multiplier={multiplier})[/cyan]")
+        
+        amt = float(current_bet) * confidence_multiplier
+        
+        # Đảm bảo amt >= base_bet (không giảm quá thấp)
+        amt = max(amt, base_bet * 0.5)
+        
+        console.print(f"[cyan]💰 ULTRA AI đặt cược: {amt:.4f} BUILD (Base: {current_bet}, Conf×: {confidence_multiplier})[/cyan]")
         if amt <= 0:
             console.print("[yellow]⚠️ Số tiền đặt không hợp lệ (<=0). Bỏ qua.[/]")
             prediction_locked = False
@@ -852,13 +1179,14 @@ def _mark_bet_result_from_issue(res_issue: Optional[int], krid: int):
         except Exception:
             pass
 
-    # --- ADAPTIVE: update formulas after we resolved result ---
+    # --- ULTRA AI: update formulas after we resolved result ---
     try:
         # res_issue corresponds to the round we just resolved; killed_room is global
-        # call update_formulas_after_result only for ADAPTIVE mode
-        update_formulas_after_result(predicted_room, krid, settings.get("algo", "VIP50"))
+        # ULTRA AI always learns from every result
+        update_formulas_after_result(predicted_room, krid, settings.get("algo", "ULTRA_AI"))
     except Exception as e:
         log_debug(f"update_formulas_after_result err: {e}")
+        console.print(f"[dim red]⚠️ ULTRA AI learning error: {e}[/]")
 
 def on_message(ws, message):
     global issue_id, count_down, killed_room, round_index, ui_state, analysis_start_ts, issue_start_ts
@@ -1121,7 +1449,7 @@ def build_header(border_color: Optional[str] = None):
     tbl.add_column(ratio=2)
     tbl.add_column(ratio=1)
 
-    left = Text("VUA THOÁT HIỂM VIP", style="bold cyan")
+    left = Text("🧠 ULTRA AI - VUA THOÁT HIỂM 🧠", style="bold cyan")
 
     b = f"{current_build:,.4f}" if isinstance(current_build, (int, float)) else (str(current_build) if current_build is not None else "-")
     u = f"{current_usdt:,.4f}" if isinstance(current_usdt, (int, float)) else (str(current_usdt) if current_usdt is not None else "-")
@@ -1135,11 +1463,19 @@ def build_header(border_color: Optional[str] = None):
 
     algo_label = SELECTION_MODES.get(settings.get('algo'), settings.get('algo'))
 
+    # ULTRA AI Stats
+    total_formulas = len(FORMULAS) if FORMULAS else 0
+    avg_confidence = sum(f.get("confidence", 0.5) for f in FORMULAS) / max(1, total_formulas) if FORMULAS else 0.5
+    pattern_count = len(PATTERN_MEMORY) if PATTERN_MEMORY else 0
+    anti_pattern_count = len(ANTI_PATTERNS) if ANTI_PATTERNS else 0
+
     right_lines = []
-    right_lines.append(f"Thuật toán: {algo_label}")
+    right_lines.append(f"🎯 {algo_label}")
     right_lines.append(f"Lãi/lỗ: [{pnl_style}] {pnl_str} [/{pnl_style}]")
     right_lines.append(f"Phiên: {issue_id or '-'}")
-    right_lines.append(f"chuỗi: thắng={max_win_streak} / thua={max_lose_streak}")
+    right_lines.append(f"Chuỗi: W={max_win_streak} / L={max_lose_streak}")
+    right_lines.append(f"🧠 AI Conf: {avg_confidence:.1%} | Patterns: {pattern_count}")
+    right_lines.append(f"📚 Học: {META_LEARNING_RATE:.3f} | Anti: {anti_pattern_count}")
     if stop_when_profit_reached and profit_target is not None:
         right_lines.append(f"[green]TakeProfit@{profit_target}[/]")
     if stop_when_loss_reached and stop_loss_target is not None:
@@ -1321,35 +1657,31 @@ def prompt_settings():
         multiplier = 2.0
     current_bet = base_bet
 
-    # Algorithm selection (chooser)
-    console.print("\n[bold]Chọn thuật toán:[/]")
-    console.print("1) VIP50 — 50 công thức tính phòng an toàn nhất (AI + RANDOM + toán học)")
-    console.print("2) VIP50+ — VIP50 mở rộng thêm bias hot/cold")
-    console.print("3) VIP100 — 100 công thức (ensemble lớn)")
-    console.print("4) ADAPTIVE — Bắt đầu như VIP50+ và tự điều chỉnh weights khi có kết quả")
-    console.print("5) VIP5000 — 5000 công thức")
-    console.print("6) VIP5000PLUS — 5000 công thức + lọc AI")
-    console.print("7) VIP10000 — 10000 công thức")
-
-    alg = safe_input("Chọn (1-7, mặc định 1): ", default="1")
+    # Algorithm selection - ULTRA AI ONLY
+    console.print("\n[bold magenta]═══════════════════════════════════════════[/]")
+    console.print("[bold cyan]🧠 ULTRA AI - SIÊU TRÍ TUỆ ĐƯỢC KÍCH HOẠT 🧠[/]")
+    console.print("[bold magenta]═══════════════════════════════════════════[/]")
+    console.print("")
+    console.print("[green]✨ Tính năng ULTRA AI:[/]")
+    console.print("  • 10,000 công thức thông minh với Deep Learning")
+    console.print("  • Pattern Recognition (Nhận diện mẫu)")
+    console.print("  • Sequence Learning (Học chuỗi kết quả)")
+    console.print("  • Meta-Learning (Học cách học)")
+    console.print("  • Confidence Scoring (Đánh giá độ tin cậy)")
+    console.print("  • Memory System (Nhớ patterns thành công)")
+    console.print("  • Anti-Pattern Detection (Tránh patterns thất bại)")
+    console.print("  • Dynamic Learning Rate (Thích ứng tốc độ học)")
+    console.print("")
+    console.print("[yellow]Tool này đã được nâng cấp lên phiên bản thông minh nhất![/]")
+    console.print("")
+    
+    settings["algo"] = "ULTRA_AI"
+    
+    # Initialize ULTRA AI formulas
     try:
-        mapping = {
-            "1": "VIP50",
-            "2": "VIP50PLUS",
-            "3": "VIP100",
-            "4": "ADAPTIVE",
-            "5": "VIP5000",
-            "6": "VIP5000PLUS",
-            "7": "VIP10000",
-        }
-        settings["algo"] = mapping.get(str(alg).strip(), "VIP50")
-    except Exception:
-        settings["algo"] = "VIP50"
-
-    # ensure formulas match selection
-    try:
-        _init_formulas(settings["algo"])
-    except Exception:
+        _init_formulas("ULTRA_AI")
+    except Exception as e:
+        console.print(f"[red]Lỗi khởi tạo ULTRA AI: {e}[/]")
         pass
 
     s = safe_input("Chống soi: sau bao nhiêu ván đặt thì nghỉ 1 ván: ", default="0")
