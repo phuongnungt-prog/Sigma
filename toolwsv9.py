@@ -1,4 +1,4 @@
-# toolws.py (UPGRADED) - tích hợp VIP50, VIP50+, VIP100, ADAPTIVE
+# toolws.py (HYPER UPGRADED) - Hyper Adaptive AI siêu trí tuệ
 from __future__ import annotations
 
 def show_banner():
@@ -150,18 +150,13 @@ SELECTION_CONFIG = {
     "avoid_last_kill": True,
 }
 
-# selection modes
+# selection mode duy nhất
+ALGO_ID = "HYPER_AI"
 SELECTION_MODES = {
-    "VIP50": "50 Công thức SIU VIP",
-    "VIP50PLUS": "VIP50+ (hot/cold)",
-    "VIP100": "VIP100 (mở rộng)",
-    "ADAPTIVE": "ADAPTIVE (tự học)",
-    "VIP5000": "VIP5000 (5000 công thức)",
-    "VIP5000PLUS": "VIP5000+ (lọc AI)",
-    "VIP10000": "VIP10000 (10000 công thức)"
+    ALGO_ID: "Hyper Adaptive AI (siêu trí tuệ)"
 }
 
-settings = {"algo": "VIP50"}
+settings = {"algo": ALGO_ID}
 
 _spinner = ["📦", "🪑", "👔", "💬", "🎥", "🏢", "💰", "👥"]
 
@@ -342,25 +337,24 @@ def fetch_balances_3games(retries=2, timeout=6, params=None, uid=None, secret=No
 
     return current_build, current_world, current_usdt
 
-# -------------------- VIP UPGRADED SELECTION (VIP50 / VIP50+ / VIP100 / ADAPTIVE) --------------------
+# -------------------- HYPER ADAPTIVE SELECTION --------------------
 
-# FORMULAS storage and generator seed
-FORMULAS: List[Dict[str, Any]] = []
-FORMULA_SEED = 1234567
+HYPER_AI_SEED = 1234567
 
-def _room_features_enhanced(rid: int):
+
+def _room_features_enhanced(rid: int) -> Dict[str, float]:
     st = room_state.get(rid, {})
     stats = room_stats.get(rid, {})
-    players = float(st.get("players", 0))
-    bet = float(st.get("bet", 0))
+    players = float(st.get("players", 0) or 0)
+    bet = float(st.get("bet", 0) or 0)
     bet_per_player = (bet / players) if players > 0 else bet
 
     players_norm = min(1.0, players / 50.0)
     bet_norm = 1.0 / (1.0 + bet / 2000.0)
     bpp_norm = 1.0 / (1.0 + bet_per_player / 1200.0)
 
-    kill_count = float(stats.get("kills", 0))
-    survive_count = float(stats.get("survives", 0))
+    kill_count = float(stats.get("kills", 0) or 0)
+    survive_count = float(stats.get("survives", 0) or 0)
     kill_rate = (kill_count + 0.5) / (kill_count + survive_count + 1.0)
     survive_score = 1.0 - kill_rate
 
@@ -388,240 +382,206 @@ def _room_features_enhanced(rid: int):
         "cold_score": cold_score,
     }
 
-def _init_formulas(mode: str = "VIP50"):
-    """
-    Initialize FORMULAS for the requested mode.
-    Modes supported: VIP50, VIP50PLUS, VIP100, ADAPTIVE
-    """
-    global FORMULAS
-    rng = random.Random(FORMULA_SEED)
-    formulas = []
 
-    def mk_formula(base_bias: Optional[str] = None):
-        w = {
-            "players": rng.uniform(0.2, 0.8),
-            "bet": rng.uniform(0.1, 0.6),
-            "bpp": rng.uniform(0.05, 0.6),
-            "survive": rng.uniform(0.05, 0.4),
-            "recent": rng.uniform(0.05, 0.3),
-            "last": rng.uniform(0.1, 0.6),
-            "hot": rng.uniform(0.0, 0.35),
-            "cold": rng.uniform(0.0, 0.35),
+class HyperAdaptiveSelector:
+    FEATURE_KEYS = (
+        "players_norm",
+        "bet_norm",
+        "bpp_norm",
+        "survive_score",
+        "recent_pen",
+        "last_pen",
+        "hot_score",
+        "cold_score",
+        "kill_gap_norm",
+        "pressure_score",
+        "momentum_players",
+        "momentum_bet",
+        "volume_share",
+        "streak_pressure",
+        "adaptive_memory",
+    )
+
+    def __init__(self, room_ids: List[int]):
+        self.room_ids = list(room_ids)
+        self._rng = random.Random(HYPER_AI_SEED)
+        self._lock = threading.Lock()
+        self._agents: List[Dict[str, Any]] = [self._make_agent(i) for i in range(80)]
+        self._room_bias: Dict[int, float] = {rid: 0.0 for rid in self.room_ids}
+        self._last_votes: List[Tuple[int, int]] = []
+        self._last_features: Dict[int, Dict[str, float]] = {}
+        self._recent_outcomes: deque = deque(maxlen=60)
+        self._explore_rate: float = 0.08
+
+    @staticmethod
+    def _clip(value: float, lo: float, hi: float) -> float:
+        return max(lo, min(hi, value))
+
+    def _make_agent(self, idx: int) -> Dict[str, Any]:
+        weights = {k: self._rng.uniform(-0.25, 0.9) for k in self.FEATURE_KEYS}
+        return {
+            "weights": weights,
+            "bias": self._rng.uniform(-0.3, 0.3),
+            "temperature": self._rng.uniform(0.7, 1.5),
+            "lr": self._rng.uniform(0.05, 0.12),
+            "momentum": {k: 0.0 for k in self.FEATURE_KEYS},
         }
-        noise = rng.uniform(0.0, 0.08)
-        if base_bias == "hot":
-            w["hot"] += rng.uniform(0.2, 0.5)
-            w["survive"] += rng.uniform(0.05, 0.2)
-        elif base_bias == "cold":
-            w["cold"] += rng.uniform(0.2, 0.5)
-            w["last"] += rng.uniform(0.05, 0.2)
-        return {"w": w, "noise": noise, "adapt": 1.0}
 
-    if mode == "VIP50":
-        for _ in range(50):
-            formulas.append(mk_formula())
-    elif mode == "VIP50PLUS":
-        for _ in range(35):
-            formulas.append(mk_formula())
-        for _ in range(10):
-            formulas.append(mk_formula(base_bias="hot"))
-        for _ in range(5):
-            formulas.append(mk_formula(base_bias="cold"))
-    
-    
-    elif mode == "VIP5000PLUS":
-        rng = random.Random(FORMULA_SEED + 5001)
-        formulas = []
-        for _ in range(5000):
-            w = {
-                "players": rng.uniform(0.15, 0.9),
-                "bet": rng.uniform(0.05, 0.7),
-                "bpp": rng.uniform(0.02, 0.7),
-                "survive": rng.uniform(0.02, 0.5),
-                "recent": rng.uniform(0.02, 0.35),
-                "last": rng.uniform(0.05, 0.7),
-                "hot": rng.uniform(0.0, 0.45),
-                "cold": rng.uniform(0.0, 0.45),
-            }
-            noise = rng.uniform(0.0, 0.09)
-            formulas.append({"w": w, "noise": noise, "win_times": [], "loss_streak": 0})
-        FORMULAS = formulas
+    def _compute_recent_memory(self, rid: int) -> float:
+        if not bet_history:
+            return 0.0
+        score = 0.0
+        decay = 1.0
+        for rec in reversed(list(bet_history)[-30:]):
+            decay *= 0.92
+            if rec.get("room") != rid:
+                continue
+            res = (rec.get("result") or "").lower()
+            if res.startswith("thắng") or res.startswith("win"):
+                score += 0.6 * decay
+            elif res.startswith("thua") or res.startswith("lose"):
+                score -= 0.8 * decay
+        return self._clip(score, -1.0, 1.0)
 
-    elif mode == "VIP10000":
-        rng = random.Random(FORMULA_SEED + 10000)
-        formulas = []
-        for _ in range(10000):
-            w = {
-                "players": rng.uniform(0.15, 0.9),
-                "bet": rng.uniform(0.05, 0.7),
-                "bpp": rng.uniform(0.02, 0.7),
-                "survive": rng.uniform(0.02, 0.5),
-                "recent": rng.uniform(0.02, 0.35),
-                "last": rng.uniform(0.05, 0.7),
-                "hot": rng.uniform(0.0, 0.45),
-                "cold": rng.uniform(0.0, 0.45),
-            }
-            noise = rng.uniform(0.0, 0.09)
-            formulas.append({"w": w, "noise": noise})
-        FORMULAS = formulas
-    elif mode == "VIP5000":
-        rng = random.Random(FORMULA_SEED + 5000)
-        formulas = []
-        for _ in range(5000):
-            w = {
-                "players": rng.uniform(0.15, 0.9),
-                "bet": rng.uniform(0.05, 0.7),
-                "bpp": rng.uniform(0.02, 0.7),
-                "survive": rng.uniform(0.02, 0.5),
-                "recent": rng.uniform(0.02, 0.35),
-                "last": rng.uniform(0.05, 0.7),
-                "hot": rng.uniform(0.0, 0.45),
-                "cold": rng.uniform(0.0, 0.45),
-            }
-            noise = rng.uniform(0.0, 0.09)
-            formulas.append({"w": w, "noise": noise})
-        FORMULAS = formulas
-    elif mode == "VIP100":
-        for _ in range(50):
-            formulas.append(mk_formula())
-        for _ in range(25):
-            formulas.append(mk_formula(base_bias="hot"))
-        for _ in range(25):
-            formulas.append(mk_formula(base_bias="cold"))
-    elif mode == "ADAPTIVE":
-        for _ in range(40):
-            formulas.append(mk_formula())
-        for _ in range(6):
-            formulas.append(mk_formula(base_bias="hot"))
-        for _ in range(4):
-            formulas.append(mk_formula(base_bias="cold"))
-    else:
-        for _ in range(50):
-            formulas.append(mk_formula())
+    def _compose_features(self, rid: int) -> Dict[str, float]:
+        base = _room_features_enhanced(rid)
+        st = room_state.get(rid, {})
+        stats = room_stats.get(rid, {})
 
-    FORMULAS = formulas
+        players = float(st.get("players", 0) or 0)
+        bet = float(st.get("bet", 0) or 0)
+        last_players = float(stats.get("last_players", players) or 0)
+        last_bet = float(stats.get("last_bet", bet) or 0)
 
-# initialize default formulas
-_init_formulas("VIP50")
+        delta_players = players - last_players
+        delta_bet = bet - last_bet
 
-def choose_room(mode: str = "VIP50") -> Tuple[int, str]:
-    """
-    Master chooser. Use mode in ("VIP50", "VIP50PLUS", "VIP100", "ADAPTIVE").
-    Returns (room_id, algo_label)
-    """
-    global FORMULAS
-    # ensure correct formula set
-    if mode == "VIP100" and len(FORMULAS) != 100:
-        _init_formulas(mode)
-    if mode == "VIP50" and len(FORMULAS) != 50:
-        _init_formulas(mode)
-    if mode == "VIP50PLUS" and len(FORMULAS) < 40:
-        _init_formulas(mode)
-    if mode == "ADAPTIVE" and len(FORMULAS) < 40:
-        _init_formulas(mode)
+        momentum_players = math.tanh(delta_players / 5.0)
+        momentum_bet = math.tanh(delta_bet / 1800.0)
 
-    cand = [r for r in ROOM_ORDER]
-    agg_scores = {r: 0.0 for r in cand}
-
-    for idx, fentry in enumerate(FORMULAS):
-        weights = fentry["w"]
-        adapt = fentry.get("adapt", 1.0)
-        noise_scale = fentry.get("noise", 0.02)
-        best_room = None
-        best_score = -1e9
-        for r in cand:
-            f = _room_features_enhanced(r)
-            score = 0.0
-            score += weights.get("players", 0.0) * f["players_norm"]
-            score += weights.get("bet", 0.0) * f["bet_norm"]
-            score += weights.get("bpp", 0.0) * f["bpp_norm"]
-            score += weights.get("survive", 0.0) * f["survive_score"]
-            score -= weights.get("recent", 0.0) * f["recent_pen"]
-            score -= weights.get("last", 0.0) * f["last_pen"]
-            score += weights.get("hot", 0.0) * f["hot_score"]
-            score -= weights.get("cold", 0.0) * f["cold_score"]
-            # deterministic noise
-            noise = (math.sin((idx + 1) * (r + 1) * 12.9898) * 43758.5453) % 1.0
-            noise = (noise - 0.5) * (noise_scale * 2.0)
-            score += noise
-            # scale by adapt (useful for ADAPTIVE)
-            score *= adapt
-            if score > best_score:
-                best_score = score
-                best_room = r
-        agg_scores[best_room] += best_score
-
-    # normalize
-    n = max(1, len(FORMULAS))
-    for r in agg_scores:
-        agg_scores[r] /= n
-
-    # ensemble-level mild adjustments
-    for r in cand:
-        f = _room_features_enhanced(r)
-        agg_scores[r] += 0.02 * f["hot_score"]
-        agg_scores[r] -= 0.02 * f["cold_score"]
-
-    ranked = sorted(agg_scores.items(), key=lambda kv: (-kv[1], kv[0]))
-    best_room = ranked[0][0]
-    return best_room, mode
-
-def update_formulas_after_result(predicted_room: Optional[int], killed_room: Optional[int], mode: str = "VIP50", lr: float = 0.12):
-    """
-    If mode == ADAPTIVE, adjust per-formula adapt multipliers based on voting alignment.
-    Simple reinforcement: reward formulas that voted for the (winning) choice and penalize those that predicted the losing choice.
-    """
-    global FORMULAS
-    if mode != "ADAPTIVE":
-        return
-    if not FORMULAS:
-        return
-
-    # determine which formula voted for which room
-    votes_for_pred = []
-    votes_for_killed = []
-    for idx, fentry in enumerate(FORMULAS):
-        weights = fentry["w"]
-        best_room = None
-        best_score = -1e9
-        for r in ROOM_ORDER:
-            feat = _room_features_enhanced(r)
-            score = 0.0
-            score += weights.get("players", 0.0) * feat["players_norm"]
-            score += weights.get("bet", 0.0) * feat["bet_norm"]
-            score += weights.get("bpp", 0.0) * feat["bpp_norm"]
-            score += weights.get("survive", 0.0) * feat["survive_score"]
-            score -= weights.get("recent", 0.0) * feat["recent_pen"]
-            score -= weights.get("last", 0.0) * feat["last_pen"]
-            score += weights.get("hot", 0.0) * feat["hot_score"]
-            score -= weights.get("cold", 0.0) * feat["cold_score"]
-            if score > best_score:
-                best_score = score
-                best_room = r
-        if best_room == predicted_room:
-            votes_for_pred.append(idx)
-        if best_room == killed_room:
-            votes_for_killed.append(idx)
-
-    win = (predicted_room is not None and killed_room is not None and predicted_room != killed_room)
-
-    for idx, fentry in enumerate(FORMULAS):
-        aw = fentry.get("adapt", 1.0)
-        if win:
-            # reward formulas that voted for predicted (winning) room; penalize those for killed
-            if idx in votes_for_pred:
-                aw = aw * (1.0 + lr)
-            if idx in votes_for_killed:
-                aw = aw * (1.0 - lr * 0.6)
+        last_kill_round = stats.get("last_kill_round")
+        if last_kill_round is None:
+            kill_gap_norm = 0.35
         else:
-            # lost: penalize formulas that voted for predicted_room; reward those that voted for killed
-            if idx in votes_for_pred:
-                aw = max(0.1, aw * (1.0 - lr))
-            if idx in votes_for_killed:
-                aw = aw * (1.0 + lr * 0.6)
-        # clamp
-        aw = min(max(aw, 0.1), 5.0)
-        fentry["adapt"] = aw
+            gap = max(0, round_index - int(last_kill_round))
+            kill_gap_norm = math.tanh(gap / 6.0)
+
+        total_bet = sum(((room_state.get(r, {}) or {}).get("bet", 0) or 0) for r in self.room_ids)
+        total_bet = float(total_bet) if total_bet else 1.0
+        volume_share = math.sqrt(max(bet, 0.0) / total_bet)
+
+        pressure_score = math.tanh((players / 12.0) + (bet / 8000.0))
+        streak_pressure = math.tanh((lose_streak - win_streak) / 6.0)
+        adaptive_memory = self._compute_recent_memory(rid)
+
+        features = {
+            "players_norm": base["players_norm"],
+            "bet_norm": base["bet_norm"],
+            "bpp_norm": base["bpp_norm"],
+            "survive_score": base["survive_score"],
+            "recent_pen": base["recent_pen"],
+            "last_pen": base["last_pen"],
+            "hot_score": base["hot_score"],
+            "cold_score": base["cold_score"],
+            "kill_gap_norm": kill_gap_norm,
+            "pressure_score": pressure_score,
+            "momentum_players": momentum_players,
+            "momentum_bet": momentum_bet,
+            "volume_share": volume_share,
+            "streak_pressure": streak_pressure,
+            "adaptive_memory": adaptive_memory,
+        }
+        return features
+
+    def _agent_vote(self, agent: Dict[str, Any], features_map: Dict[int, Dict[str, float]]) -> Tuple[int, float]:
+        best_room = None
+        best_score = -float("inf")
+        for rid, feats in features_map.items():
+            score = agent["bias"]
+            for key, value in feats.items():
+                score += agent["weights"].get(key, 0.0) * value
+            score /= max(0.35, agent["temperature"])
+            score += self._rng.uniform(-self._explore_rate, self._explore_rate)
+            score += self._room_bias.get(rid, 0.0) * 0.5
+            if score > best_score:
+                best_score = score
+                best_room = rid
+        return (best_room or self.room_ids[0]), best_score
+
+    def select_room(self) -> Tuple[int, str]:
+        with self._lock:
+            features_map = {rid: self._compose_features(rid) for rid in self.room_ids}
+            self._last_features = features_map
+            room_scores = {rid: self._room_bias.get(rid, 0.0) for rid in self.room_ids}
+            last_votes: List[Tuple[int, int]] = []
+            for idx, agent in enumerate(self._agents):
+                voted_room, voted_score = self._agent_vote(agent, features_map)
+                room_scores[voted_room] += voted_score
+                last_votes.append((idx, voted_room))
+            self._last_votes = last_votes
+            ranked = sorted(room_scores.items(), key=lambda kv: (-kv[1], kv[0]))
+            choice = ranked[0][0]
+            return choice, ALGO_ID
+
+    def update(self, predicted_room: Optional[int], killed_room: Optional[int]):
+        if predicted_room is None:
+            return
+        with self._lock:
+            if not self._last_votes:
+                return
+            win = (killed_room is not None and predicted_room != killed_room)
+            outcome = 1.0 if win else -1.0
+            features_pred = self._last_features.get(predicted_room, {})
+            features_killed = self._last_features.get(killed_room, {}) if killed_room in self._last_features else {}
+
+            for idx, vote_room in self._last_votes:
+                agent = self._agents[idx]
+                influence = 1.0 if vote_room == predicted_room else -0.6 if (killed_room is not None and vote_room == killed_room) else 0.15
+                signed = outcome * influence
+                base_feats = self._last_features.get(vote_room, features_pred)
+                if not base_feats:
+                    continue
+                for key in self.FEATURE_KEYS:
+                    value = base_feats.get(key, 0.0)
+                    grad = signed * value
+                    agent["momentum"][key] = 0.55 * agent["momentum"][key] + grad
+                    agent["weights"][key] = self._clip(agent["weights"][key] + agent["lr"] * agent["momentum"][key], -2.4, 2.4)
+                adjust_bias = (features_pred.get("survive_score", 0.0) - features_killed.get("survive_score", 0.0))
+                agent["bias"] = self._clip(agent["bias"] + agent["lr"] * (signed * 0.1 + adjust_bias * 0.02), -2.0, 2.0)
+                agent["temperature"] = self._clip(agent["temperature"] * (0.97 if win else 1.04), 0.3, 2.6)
+
+            if predicted_room in self._room_bias:
+                self._room_bias[predicted_room] = self._clip(self._room_bias[predicted_room] + (0.12 if win else -0.18), -1.2, 1.2)
+            if killed_room in self._room_bias:
+                self._room_bias[killed_room] = self._clip(self._room_bias[killed_room] - (0.07 if win else -0.11), -1.2, 1.2)
+
+            self._recent_outcomes.append(1 if win else 0)
+            if len(self._recent_outcomes) >= 5:
+                last_win_rate = sum(list(self._recent_outcomes)[-5:]) / min(len(self._recent_outcomes), 5)
+                target = 0.04 if last_win_rate > 0.6 else 0.1 if last_win_rate > 0.35 else 0.18
+                self._explore_rate = 0.85 * self._explore_rate + 0.15 * target
+                self._explore_rate = self._clip(self._explore_rate, 0.01, 0.25)
+
+            self._last_votes = []
+
+
+selector = HyperAdaptiveSelector(ROOM_ORDER)
+
+
+def choose_room(mode: str = ALGO_ID) -> Tuple[int, str]:
+    try:
+        return selector.select_room()
+    except Exception as exc:
+        log_debug(f"HyperAdaptiveSelector choose failed: {exc}")
+        return ROOM_ORDER[0], ALGO_ID
+
+
+def update_formulas_after_result(predicted_room: Optional[int], killed_room: Optional[int], mode: str = ALGO_ID, lr: float = 0.12):
+    try:
+        selector.update(predicted_room, killed_room)
+    except Exception as exc:
+        log_debug(f"HyperAdaptiveSelector update failed: {exc}")
+
 
 # -------------------- BETTING HELPERS --------------------
 
@@ -691,12 +651,12 @@ def lock_prediction_if_needed(force: bool = False):
         return
 
     # Chọn phòng chỉ khi KHÔNG skip
-    algo = settings.get("algo", "VIP50")
+    algo = settings.get("algo", ALGO_ID)
     try:
         chosen, algo_used = choose_room(algo)
     except Exception as e:
         log_debug(f"choose_room error: {e}")
-        chosen, algo_used = choose_room("VIP50")
+        chosen, algo_used = choose_room(ALGO_ID)
     predicted_room = chosen
     prediction_locked = True
     ui_state = "PREDICTED"
@@ -852,11 +812,10 @@ def _mark_bet_result_from_issue(res_issue: Optional[int], krid: int):
         except Exception:
             pass
 
-    # --- ADAPTIVE: update formulas after we resolved result ---
+    # --- Hyper AI: cập nhật mô hình sau khi có kết quả ---
     try:
-        # res_issue corresponds to the round we just resolved; killed_room is global
-        # call update_formulas_after_result only for ADAPTIVE mode
-        update_formulas_after_result(predicted_room, krid, settings.get("algo", "VIP50"))
+        # cập nhật mô hình Hyper Adaptive AI dựa trên kết quả thực tế
+        update_formulas_after_result(predicted_room, krid, settings.get("algo", ALGO_ID))
     except Exception as e:
         log_debug(f"update_formulas_after_result err: {e}")
 
@@ -1321,36 +1280,11 @@ def prompt_settings():
         multiplier = 2.0
     current_bet = base_bet
 
-    # Algorithm selection (chooser)
-    console.print("\n[bold]Chọn thuật toán:[/]")
-    console.print("1) VIP50 — 50 công thức tính phòng an toàn nhất (AI + RANDOM + toán học)")
-    console.print("2) VIP50+ — VIP50 mở rộng thêm bias hot/cold")
-    console.print("3) VIP100 — 100 công thức (ensemble lớn)")
-    console.print("4) ADAPTIVE — Bắt đầu như VIP50+ và tự điều chỉnh weights khi có kết quả")
-    console.print("5) VIP5000 — 5000 công thức")
-    console.print("6) VIP5000PLUS — 5000 công thức + lọc AI")
-    console.print("7) VIP10000 — 10000 công thức")
-
-    alg = safe_input("Chọn (1-7, mặc định 1): ", default="1")
-    try:
-        mapping = {
-            "1": "VIP50",
-            "2": "VIP50PLUS",
-            "3": "VIP100",
-            "4": "ADAPTIVE",
-            "5": "VIP5000",
-            "6": "VIP5000PLUS",
-            "7": "VIP10000",
-        }
-        settings["algo"] = mapping.get(str(alg).strip(), "VIP50")
-    except Exception:
-        settings["algo"] = "VIP50"
-
-    # ensure formulas match selection
-    try:
-        _init_formulas(settings["algo"])
-    except Exception:
-        pass
+    # Thuật toán cố định
+    console.print("\n[bold]Thuật toán sử dụng:[/] Hyper Adaptive AI (siêu trí tuệ)")
+    console.print("   • Bộ não AI tự học và ưu tiên các phòng có tỉ lệ sống sót cao nhất.")
+    console.print("   • Tự hiệu chỉnh theo kết quả thực tế, không cần lựa chọn thêm.")
+    settings["algo"] = ALGO_ID
 
     s = safe_input("Chống soi: sau bao nhiêu ván đặt thì nghỉ 1 ván: ", default="0")
     try:
