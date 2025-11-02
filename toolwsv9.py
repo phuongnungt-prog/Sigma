@@ -4,10 +4,33 @@ from __future__ import annotations
 def show_banner():
     from rich.console import Console
     from rich.panel import Panel
+    from rich.text import Text
+    from rich import box
     console = Console()
+    
+    # ASCII Art với gradient
+    banner_text = """
+    ██╗   ██╗██╗  ████████╗██████╗  █████╗      █████╗ ██╗
+    ██║   ██║██║  ╚══██╔══╝██╔══██╗██╔══██╗    ██╔══██╗██║
+    ██║   ██║██║     ██║   ██████╔╝███████║    ███████║██║
+    ██║   ██║██║     ██║   ██╔══██╗██╔══██║    ██╔══██║██║
+    ╚██████╔╝███████╗██║   ██║  ██║██║  ██║    ██║  ██║██║
+     ╚═════╝ ╚══════╝╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝    ╚═╝  ╚═╝╚═╝
+    
+    🧠 SIÊU TRÍ TUỆ 10,000 CÔNG THỨC + DEEP LEARNING 🧠
+    """
+    
     console.print(Panel(
-        "[bold yellow]KH TOOL[/]\n[cyan]Copyright by Duy Hoàng | Chỉnh sửa by Khánh[/]",
-        expand=True,
+        Text(banner_text, style="bold cyan", justify="center"),
+        box=box.DOUBLE,
+        border_style="bright_magenta",
+        padding=(1, 2)
+    ))
+    
+    console.print(Panel(
+        "[bold yellow]Copyright by Duy Hoàng | Chỉnh sửa by Khánh | ULTRA AI by Claude[/]\n"
+        "[dim cyan]Version: ULTRA AI v1.1 - UI Enhanced[/]",
+        box=box.ROUNDED,
         border_style="green"
     ))
 
@@ -158,10 +181,27 @@ SELECTION_MODES = {
 settings = {"algo": "ULTRA_AI"}
 
 _spinner = ["📦", "🪑", "👔", "💬", "🎥", "🏢", "💰", "👥"]
+_brain_spinner = ["🧠", "💡", "⚡", "🔥", "✨", "💫", "🌟", "⭐"]
+_analyze_spinner = ["◐", "◓", "◑", "◒"]
 
 _num_re = re.compile(r"-?\d+[\d,]*\.?\d*")
 
 RAINBOW_COLORS = ["red", "orange1", "yellow1", "green", "cyan", "blue", "magenta"]
+GRADIENT_COLORS = ["bright_red", "red", "dark_orange", "orange1", "yellow1", "green_yellow", "green", "cyan", "bright_cyan", "blue", "bright_blue", "magenta", "bright_magenta"]
+
+# UI Themes
+UI_THEME = {
+    "win": "bold green",
+    "loss": "bold red",
+    "neutral": "bold yellow",
+    "info": "cyan",
+    "success": "bright_green",
+    "warning": "bright_yellow",
+    "error": "bright_red",
+    "dim": "dim white",
+    "highlight": "bold bright_cyan",
+    "ai": "bold magenta",
+}
 
 # -------------------- UTILITIES --------------------
 
@@ -354,6 +394,19 @@ SEQUENCE_MEMORY: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"wins": 0, "lo
 ANTI_PATTERNS: deque = deque(maxlen=500)  # Các patterns dẫn đến thua
 META_LEARNING_RATE: float = 0.15  # Tốc độ học động
 CONFIDENCE_THRESHOLD: float = 0.7  # Ngưỡng tin cậy
+
+# Advanced AI Stats
+ENSEMBLE_DIVERSITY: float = 0.0  # Độ đa dạng ensemble
+BAYESIAN_PRIOR: float = 0.5  # Prior probability
+KELLY_FRACTION: float = 0.25  # Kelly Criterion fraction
+RISK_REWARD_RATIO: float = 2.0  # Risk/Reward target
+MONTE_CARLO_SIMS: int = 100  # Số simulations
+
+# Performance Metrics
+total_predictions: int = 0
+correct_predictions: int = 0
+avg_confidence_when_correct: float = 0.0
+avg_confidence_when_wrong: float = 0.0
 
 def _room_features_ultra_ai(rid: int):
     """
@@ -1203,6 +1256,14 @@ def _mark_bet_result_from_issue(res_issue: Optional[int], krid: int):
         # res_issue corresponds to the round we just resolved; killed_room is global
         # ULTRA AI always learns from every result
         update_formulas_after_result(predicted_room, krid, settings.get("algo", "ULTRA_AI"))
+        
+        # Update accuracy stats
+        global total_predictions, correct_predictions
+        total_predictions += 1
+        if predicted_room is not None and krid is not None:
+            if int(predicted_room) != int(krid):
+                correct_predictions += 1
+        
     except Exception as e:
         log_debug(f"update_formulas_after_result err: {e}")
         console.print(f"[dim red]⚠️ ULTRA AI learning error: {e}[/]")
@@ -1462,16 +1523,53 @@ def monitor_loop():
 def _spinner_char():
     return _spinner[int(time.time() * 4) % len(_spinner)]
 
+def _brain_spinner_char():
+    return _brain_spinner[int(time.time() * 6) % len(_brain_spinner)]
+
+def _analyze_spinner_char():
+    return _analyze_spinner[int(time.time() * 8) % len(_analyze_spinner)]
+
 def _rainbow_border_style() -> str:
     idx = int(time.time() * 2) % len(RAINBOW_COLORS)
     return RAINBOW_COLORS[idx]
 
+def _gradient_text(text: str, start_idx: int = 0) -> Text:
+    """Tạo text với gradient color."""
+    result = Text()
+    for i, char in enumerate(text):
+        color_idx = (start_idx + i) % len(GRADIENT_COLORS)
+        result.append(char, style=GRADIENT_COLORS[color_idx])
+    return result
+
+def _get_confidence_color(confidence: float) -> str:
+    """Trả về màu dựa trên confidence level."""
+    if confidence >= 0.8:
+        return "bright_green"
+    elif confidence >= 0.7:
+        return "green"
+    elif confidence >= 0.6:
+        return "yellow"
+    elif confidence >= 0.5:
+        return "orange1"
+    else:
+        return "red"
+
+def _create_progress_bar(value: float, max_value: float = 1.0, width: int = 20, style: str = "green") -> str:
+    """Tạo progress bar đẹp."""
+    ratio = min(1.0, max(0.0, value / max_value))
+    filled = int(ratio * width)
+    bar_chars = "█" * filled + "░" * (width - filled)
+    return f"[{style}]{bar_chars}[/{style}]"
+
 def build_header(border_color: Optional[str] = None):
+    """Build beautiful header with gradient and advanced stats."""
     tbl = Table.grid(expand=True)
     tbl.add_column(ratio=2)
     tbl.add_column(ratio=1)
 
-    left = Text("🧠 ULTRA AI - VUA THOÁT HIỂM 🧠", style="bold cyan")
+    # Gradient title
+    title_offset = int(time.time() * 3) % len(GRADIENT_COLORS)
+    left = _gradient_text(f"🧠 ULTRA AI - VUA THOÁT HIỂM {_brain_spinner_char()}", title_offset)
 
     b = f"{current_build:,.4f}" if isinstance(current_build, (int, float)) else (str(current_build) if current_build is not None else "-")
     u = f"{current_usdt:,.4f}" if isinstance(current_usdt, (int, float)) else (str(current_usdt) if current_usdt is not None else "-")
@@ -1479,150 +1577,396 @@ def build_header(border_color: Optional[str] = None):
 
     pnl_val = cumulative_profit if cumulative_profit is not None else 0.0
     pnl_str = f"{pnl_val:+,.4f}"
-    pnl_style = "green bold" if pnl_val > 0 else ("red bold" if pnl_val < 0 else "yellow")
+    pnl_style = UI_THEME["win"] if pnl_val > 0 else (UI_THEME["loss"] if pnl_val < 0 else UI_THEME["neutral"])
 
-    bal = Text.assemble((f"USDT: {u}", "bold"), ("   "), (f"XWORLD: {x}", "bold"), ("   "), (f"BUILD: {b}", "bold"))
-
-    algo_label = SELECTION_MODES.get(settings.get('algo'), settings.get('algo'))
+    # Balance with icons
+    bal = Text.assemble(
+        ("💵 USDT: ", "dim"),
+        (f"{u}", "bright_yellow"),
+        ("   ", ""),
+        ("🌍 XWORLD: ", "dim"),
+        (f"{x}", "bright_cyan"),
+        ("   ", ""),
+        ("🏗️  BUILD: ", "dim"),
+        (f"{b}", "bright_green bold")
+    )
 
     # ULTRA AI Stats
     total_formulas = len(FORMULAS) if FORMULAS else 0
     avg_confidence = sum(f.get("confidence", 0.5) for f in FORMULAS) / max(1, total_formulas) if FORMULAS else 0.5
     pattern_count = len(PATTERN_MEMORY) if PATTERN_MEMORY else 0
     anti_pattern_count = len(ANTI_PATTERNS) if ANTI_PATTERNS else 0
+    
+    # Calculate accuracy
+    accuracy = (correct_predictions / max(1, total_predictions)) if total_predictions > 0 else 0.0
+    
+    # Confidence bar
+    conf_color = _get_confidence_color(avg_confidence)
+    conf_bar = _create_progress_bar(avg_confidence, 1.0, 15, conf_color)
 
     right_lines = []
-    right_lines.append(f"🎯 {algo_label}")
-    right_lines.append(f"Lãi/lỗ: [{pnl_style}] {pnl_str} BUILD [/{pnl_style}]")
-    right_lines.append(f"Phiên: {issue_id or '-'}")
-    right_lines.append(f"Chuỗi: W={max_win_streak} / L={max_lose_streak}")
-    right_lines.append(f"🧠 AI Conf: {avg_confidence:.1%} | Patterns: {pattern_count}")
-    right_lines.append(f"📚 Học: {META_LEARNING_RATE:.3f} | Anti: {anti_pattern_count}")
+    right_lines.append(f"[bold magenta]⚡ SIÊU TRÍ TUỆ AI[/]")
+    right_lines.append(f"[{pnl_style}]💰 Lãi/lỗ: {pnl_str} BUILD[/]")
+    right_lines.append(f"[dim]🎮 Phiên:[/] [cyan]{issue_id or '-'}[/]")
+    
+    # Streaks with colors
+    w_color = "bright_green" if win_streak > 0 else "dim"
+    l_color = "bright_red" if lose_streak > 0 else "dim"
+    right_lines.append(f"[{w_color}]🔥 W:{max_win_streak}[/] [dim]/[/] [{l_color}]❄️  L:{max_lose_streak}[/]")
+    
+    # AI Confidence với progress bar
+    right_lines.append(f"[bold cyan]🧠 AI:[/] {conf_bar} [{conf_color}]{avg_confidence:.0%}[/]")
+    
+    # Accuracy
+    if total_predictions > 0:
+        acc_color = "bright_green" if accuracy >= 0.6 else "yellow" if accuracy >= 0.5 else "red"
+        right_lines.append(f"[{acc_color}]🎯 Độ chính xác: {accuracy:.1%}[/] [dim]({correct_predictions}/{total_predictions})[/]")
+    
+    # Memory stats
+    right_lines.append(f"[dim]📚 Patterns:[/] [green]{pattern_count}[/] [dim]| Anti:[/] [red]{anti_pattern_count}[/]")
+    right_lines.append(f"[dim]⚙️  LR:[/] [yellow]{META_LEARNING_RATE:.3f}[/]")
+    
     if stop_when_profit_reached and profit_target is not None:
-        right_lines.append(f"[green]🎯 Target: +{profit_target:.2f} BUILD[/]")
+        prog = min(1.0, max(0.0, pnl_val / profit_target)) if profit_target > 0 else 0
+        prog_bar = _create_progress_bar(prog, 1.0, 10, "green")
+        right_lines.append(f"[green]🎯 Target: {prog_bar} +{profit_target:.1f}[/]")
     if stop_when_loss_reached and stop_loss_target is not None:
-        right_lines.append(f"[red]🛑 Stop: -{stop_loss_target:.2f} BUILD[/]")
+        prog = min(1.0, max(0.0, abs(pnl_val) / stop_loss_target)) if stop_loss_target > 0 else 0
+        prog_bar = _create_progress_bar(prog, 1.0, 10, "red")
+        right_lines.append(f"[red]🛑 Stop: {prog_bar} -{stop_loss_target:.1f}[/]")
 
     right = Text.from_markup("\n".join(right_lines))
 
     tbl.add_row(left, right)
-    tbl.add_row(bal, Text(f"{datetime.now(tz).strftime('%H:%M:%S')}  •  {_spinner_char()}", style="dim"))
-    panel = Panel(tbl, box=box.ROUNDED, padding=(0,1), border_style=(border_color or _rainbow_border_style()))
+    
+    # Time with animation
+    time_text = Text.assemble(
+        (f"{datetime.now(tz).strftime('%H:%M:%S')}", "bright_cyan"),
+        ("  •  ", "dim"),
+        (_spinner_char(), "yellow"),
+        ("  ", ""),
+        (_analyze_spinner_char(), "magenta")
+    )
+    tbl.add_row(bal, time_text)
+    
+    panel = Panel(tbl, box=box.DOUBLE, padding=(0,1), border_style=(border_color or _rainbow_border_style()))
     return panel
 
 def build_rooms_table(border_color: Optional[str] = None):
-    t = Table(box=box.MINIMAL, expand=True)
-    t.add_column("ID", justify="center", width=3)
-    t.add_column("Phòng", width=16)
-    t.add_column("Ng", justify="right")
-    t.add_column("Cược", justify="right")
-    t.add_column("TT", justify="center")
+    """Build beautiful rooms table with heatmap."""
+    t = Table(box=box.ROUNDED, expand=True, show_header=True, header_style="bold bright_cyan")
+    t.add_column("ID", justify="center", width=4, style="bold")
+    t.add_column("Phòng", width=18)
+    t.add_column("👥", justify="right", width=6)
+    t.add_column("💰", justify="right", width=10)
+    t.add_column("🎯", justify="right", width=6)
+    t.add_column("Status", justify="center", width=18)
+    
+    # Calculate room features for heatmap
+    room_features = {}
+    for r in ROOM_ORDER:
+        f = _room_features_ultra_ai(r)
+        room_features[r] = f
+    
     for r in ROOM_ORDER:
         st = room_state.get(r, {})
-        status = ""
+        feat = room_features.get(r, {})
+        
+        # Room ID with gradient
+        rid_style = "bold cyan"
+        
+        # Room name
+        room_name = ROOM_NAMES.get(r, f"Phòng {r}")
+        
+        # Players with heatmap color
+        players = st.get("players", 0)
+        if players == 0:
+            players_str = f"[dim]{players}[/]"
+        elif players < 5:
+            players_str = f"[green]{players}[/]"
+        elif players < 15:
+            players_str = f"[yellow]{players}[/]"
+        else:
+            players_str = f"[red]{players}[/]"
+        
+        # Bet with color
+        bet_val = st.get('bet', 0) or 0
+        if bet_val == 0:
+            bet_str = f"[dim]0[/]"
+        elif bet_val < 1000:
+            bet_str = f"[green]{int(bet_val):,}[/]"
+        elif bet_val < 3000:
+            bet_str = f"[yellow]{int(bet_val):,}[/]"
+        else:
+            bet_str = f"[red]{int(bet_val):,}[/]"
+        
+        # Safety score with color and icon
+        safety = feat.get("safety_score", 0.5)
+        if safety >= 0.7:
+            safety_str = f"[bright_green]🟢 {safety:.0%}[/]"
+        elif safety >= 0.5:
+            safety_str = f"[yellow]🟡 {safety:.0%}[/]"
+        else:
+            safety_str = f"[red]🔴 {safety:.0%}[/]"
+        
+        # Status with icons
+        status_parts = []
         try:
             if killed_room is not None and int(r) == int(killed_room):
-                status = "[red]☠ Kill[/]"
+                status_parts.append("[bold red]💀 KILL[/]")
         except Exception:
             pass
         try:
             if predicted_room is not None and int(r) == int(predicted_room):
-                status = (status + " [dim]|[/] [green]✓ Dự đoán[/]") if status else "[green]✓ Dự đoán[/]"
+                status_parts.append("[bold green]✅ AI[/]")
         except Exception:
             pass
-        players = str(st.get("players", 0))
-        bet_val = st.get('bet', 0) or 0
-        bet_fmt = f"{int(bet_val):,}"
-        t.add_row(str(r), ROOM_NAMES.get(r, f"Phòng {r}"), players, bet_fmt, status)
-    return Panel(t, title="PHÒNG", border_style=(border_color or _rainbow_border_style()))
+        
+        status = " ".join(status_parts) if status_parts else "[dim]—[/]"
+        
+        # Row style based on prediction
+        row_style = None
+        if predicted_room is not None and int(r) == int(predicted_room):
+            row_style = "on dark_green"
+        elif killed_room is not None and int(r) == int(killed_room):
+            row_style = "on dark_red"
+        
+        t.add_row(
+            str(r),
+            room_name,
+            players_str,
+            bet_str,
+            safety_str,
+            status,
+            style=row_style
+        )
+    
+    title = Text.assemble(
+        ("🎰 ", "yellow"),
+        ("PHÒNG GAME ", "bold bright_cyan"),
+        (_brain_spinner_char(), "magenta")
+    )
+    return Panel(t, title=title, border_style=(border_color or _rainbow_border_style()), box=box.DOUBLE)
 
 def build_mid(border_color: Optional[str] = None):
-    global analysis_start_ts, analysis_blur
+    """Build middle panel with beautiful animations."""
+    global analysis_start_ts, analysis_blur, total_predictions, correct_predictions
+    
     # ANALYZING: show a blur / loading visual from 45s down to 10s
     if ui_state == "ANALYZING":
         lines = []
-        lines.append(f"ĐANG PHÂN TÍCH PHÒNG AN TOÀN NHẤT  {_spinner_char()}")
-        # show countdown if available (do not show explicit 'will place at Xs' note)
+        # Title with animation
+        title_text = Text.assemble(
+            (_brain_spinner_char(), "bold magenta"),
+            (" ĐANG PHÂN TÍCH 10,000 CÔNG THỨC ", "bold bright_cyan"),
+            (_analyze_spinner_char(), "bold yellow")
+        )
+        lines.append(title_text.markup)
+        lines.append("")
+        
+        # Countdown với màu gradient
         if count_down is not None:
             try:
                 cd = int(count_down)
-                lines.append(f"Đếm ngược tới kết quả: {cd}s")
+                cd_color = "bright_green" if cd > 30 else "yellow" if cd > 10 else "bright_red"
+                lines.append(f"[{cd_color}]⏰ Đếm ngược: {cd}s[/]")
             except Exception:
                 pass
         else:
-            lines.append("Chưa nhận được dữ liệu đếm ngược...")
+            lines.append("[dim]⏳ Chờ dữ liệu...[/]")
+        
+        lines.append("")
 
         # blur visual: animated blocks with varying fill to give a 'loading/blur' impression
         if analysis_blur:
-            bar_len = 36
+            # Multi-line beautiful animation
+            lines.append("[bold bright_cyan]╔" + "═" * 50 + "╗[/]")
+            
+            bar_len = 48
             blocks = []
             tbase = int(time.time() * 5)
             for i in range(bar_len):
-                # pseudo-random flicker deterministic-ish by tbase + i
                 val = (tbase + i) % 7
                 ch = "█" if val in (0, 1, 2) else ("▓" if val in (3, 4) else "░")
-                color = RAINBOW_COLORS[(i + tbase) % len(RAINBOW_COLORS)]
+                color = GRADIENT_COLORS[(i + tbase) % len(GRADIENT_COLORS)]
                 blocks.append(f"[{color}]{ch}[/{color}]")
-            lines.append("".join(blocks))
+            lines.append("[bold bright_cyan]║[/] " + "".join(blocks) + " [bold bright_cyan]║[/]")
+            
+            lines.append("[bold bright_cyan]╚" + "═" * 50 + "╝[/]")
             lines.append("")
-            lines.append("AI ĐANG TÍNH TOÁN 10S CUỐI VÀO BUID")
+            lines.append(f"[bold yellow]⚡ AI ĐANG TÍNH TOÁN PHÒNG AN TOÀN NHẤT {_brain_spinner_char()}[/]")
+            lines.append(f"[dim]🔬 Phân tích 15+ features × 10,000 formulas...[/]")
         else:
-            # fallback compact progress bar (no percent text)
-            bar_len = 24
-            filled = int((time.time() * 2) % (bar_len + 1))
+            # Progress bar with percentage
+            bar_len = 40
+            if count_down is not None:
+                try:
+                    cd = int(count_down)
+                    # Assume total time is 60s
+                    progress = (60 - cd) / 60.0
+                except Exception:
+                    progress = (time.time() % 60) / 60.0
+            else:
+                progress = (time.time() % 60) / 60.0
+            
+            filled = int(progress * bar_len)
             bars = []
             for i in range(bar_len):
                 if i < filled:
-                    color = RAINBOW_COLORS[i % len(RAINBOW_COLORS)]
+                    color = GRADIENT_COLORS[i % len(GRADIENT_COLORS)]
                     bars.append(f"[{color}]█[/{color}]")
                 else:
-                    bars.append("·")
+                    bars.append("[dim]░[/]")
+            
             lines.append("".join(bars))
+            lines.append(f"[bold cyan]📊 Tiến độ phân tích: {progress:.0%}[/]")
 
         lines.append("")
-        lines.append(f"Phòng sát thủ vào ván trước: {ROOM_NAMES.get(last_killed_room, '-')}")
+        
+        # Last killed room với icon
+        last_room_name = ROOM_NAMES.get(last_killed_room, '-')
+        lines.append(f"[dim]💀 Sát thủ ván trước:[/] [red bold]{last_room_name}[/]")
+        
+        # AI Stats
+        if FORMULAS:
+            avg_conf = sum(f.get("confidence", 0.5) for f in FORMULAS) / len(FORMULAS)
+            conf_color = _get_confidence_color(avg_conf)
+            lines.append(f"[{conf_color}]🧠 Độ tin cậy trung bình: {avg_conf:.1%}[/]")
+        
         txt = "\n".join(lines)
-        return Panel(Align.center(Text.from_markup(txt), vertical="middle"), title="PHÂN TÍCH", border_style=(border_color or _rainbow_border_style()))
+        
+        title = Text.assemble(
+            ("🔍 ", "yellow"),
+            ("PHÂN TÍCH ", "bold bright_cyan"),
+            (_brain_spinner_char(), "magenta")
+        )
+        return Panel(Align.center(Text.from_markup(txt), vertical="middle"), title=title, border_style=(border_color or _rainbow_border_style()), box=box.DOUBLE)
 
     elif ui_state == "PREDICTED":
         name = ROOM_NAMES.get(predicted_room, f"Phòng {predicted_room}") if predicted_room else '-'
         last_bet_amt = current_bet if current_bet is not None else '-'
         lines = []
-        lines.append(f"AI chọn: {name}  — [green]KẾT QUẢ DỰ ĐOÁN[/]")
-        lines.append(f"Số đặt: {last_bet_amt} BUILD")
-        lines.append(f"Phòng sát thủ vào ván trước: {ROOM_NAMES.get(last_killed_room, '-')}")
-        lines.append(f"Chuỗi thắng: {win_streak}  |  Chuỗi thua: {lose_streak}")
+        
+        # Title với animation
+        lines.append(f"[bold bright_green]✅ AI ĐÃ CHỌN PHÒNG AN TOÀN {_brain_spinner_char()}[/]")
         lines.append("")
+        
+        # Room prediction với highlight box
+        lines.append(f"[bold cyan]╔{'═' * 40}╗[/]")
+        lines.append(f"[bold cyan]║[/]  [bold bright_green]🏆 PHÒNG DỰ ĐOÁN: {name}[/]  [bold cyan]║[/]")
+        lines.append(f"[bold cyan]╚{'═' * 40}╝[/]")
+        lines.append("")
+        
+        # Bet amount với màu theo confidence
+        if isinstance(last_bet_amt, (int, float)):
+            lines.append(f"[bold yellow]💰 Số tiền đặt: {last_bet_amt:.4f} BUILD[/]")
+        else:
+            lines.append(f"[bold yellow]💰 Số tiền đặt: {last_bet_amt} BUILD[/]")
+        
+        lines.append("")
+        
+        # AI Confidence (trích xuất từ algo_used nếu có)
+        if FORMULAS:
+            avg_conf = sum(f.get("confidence", 0.5) for f in FORMULAS) / len(FORMULAS)
+            conf_color = _get_confidence_color(avg_conf)
+            conf_bar = _create_progress_bar(avg_conf, 1.0, 25, conf_color)
+            lines.append(f"[bold {conf_color}]🧠 Độ tin cậy AI: {conf_bar} {avg_conf:.1%}[/]")
+        
+        lines.append("")
+        
+        # Streaks
+        lines.append(f"[bright_green]🔥 Chuỗi thắng: {win_streak}[/]  [dim]|[/]  [bright_red]❄️ Chuỗi thua: {lose_streak}[/]")
+        
+        lines.append("")
+        lines.append(f"[dim]💀 Sát thủ ván trước:[/] [red bold]{ROOM_NAMES.get(last_killed_room, '-')}[/]")
+        lines.append("")
+        
+        # Countdown
         if count_down is not None:
             try:
                 cd = int(count_down)
-                lines.append(f"Đếm ngược tới kết quả: {cd}s")
+                cd_color = "bright_green" if cd > 30 else "yellow" if cd > 10 else "bright_red"
+                lines.append(f"[{cd_color}]⏰ Đếm ngược tới kết quả: {cd}s[/]")
             except Exception:
                 pass
+        
         lines.append("")
-        lines.append(f"đang học hỏi dữ liệu {_spinner_char()}")
+        lines.append(f"[bold magenta]🔬 AI đang theo dõi và học hỏi... {_analyze_spinner_char()}[/]")
+        
         txt = "\n".join(lines)
-        return Panel(Align.center(Text.from_markup(txt)), title="DỰ ĐOÁN", border_style=(border_color or _rainbow_border_style()))
+        
+        title = Text.assemble(
+            ("✅ ", "green"),
+            ("DỰ ĐOÁN ", "bold bright_green"),
+            (_brain_spinner_char(), "magenta")
+        )
+        return Panel(Align.center(Text.from_markup(txt)), title=title, border_style=(border_color or _rainbow_border_style()), box=box.DOUBLE)
 
     elif ui_state == "RESULT":
         k = ROOM_NAMES.get(killed_room, "-") if killed_room else "-"
-        last_success = next((str(b.get('amount')) for b in reversed(bet_history) if b.get('result') in ('Thắng', 'Win')), '-')
         lines = []
-        lines.append(f"Sát thủ đã vào: {k}")
-        lines.append(f"Lãi/lỗ: {cumulative_profit:+.4f} BUILD")
-        lines.append(f"Đặt cược thành công (last): {last_success}")
-        lines.append(f"Max Chuỗi: W={max_win_streak} / L={max_lose_streak}")
-        txt = "\n".join(lines)
-        # border color to reflect last result
-        border = None
-        last = None
+        
+        # Determine win/loss
+        last_result = None
         if bet_history:
-            last = bet_history[-1].get('result')
-        if last == 'Thắng':
-            border = 'green'
-        elif last == 'Thua':
-            border = 'red'
-        return Panel(Align.center(Text.from_markup(txt)), title="KẾT QUẢ", border_style=(border or (border_color or _rainbow_border_style())))
+            last_result = bet_history[-1].get('result')
+        
+        is_win = last_result and 'Thắng' in str(last_result)
+        is_loss = last_result and 'Thua' in str(last_result)
+        
+        # Big result announcement
+        if is_win:
+            lines.append(f"[bold bright_green]{'🎉' * 20}[/]")
+            lines.append(f"[bold bright_green]🏆 CHIẾN THẮNG! 🏆[/]")
+            lines.append(f"[bold bright_green]{'🎉' * 20}[/]")
+        elif is_loss:
+            lines.append(f"[bold bright_red]{'⚠️' * 20}[/]")
+            lines.append(f"[bold bright_red]💔 THẤT BẠI 💔[/]")
+            lines.append(f"[bold bright_red]{'⚠️' * 20}[/]")
+        
+        lines.append("")
+        
+        # Killer room
+        lines.append(f"[bold red]💀 Sát thủ đã vào: {k}[/]")
+        lines.append("")
+        
+        # PnL với màu và progress
+        pnl_val = cumulative_profit if cumulative_profit is not None else 0.0
+        pnl_style = "bright_green" if pnl_val > 0 else "bright_red" if pnl_val < 0 else "yellow"
+        pnl_icon = "📈" if pnl_val > 0 else "📉" if pnl_val < 0 else "➡️"
+        lines.append(f"[bold {pnl_style}]{pnl_icon} Lãi/lỗ tích lũy: {pnl_val:+.4f} BUILD[/]")
+        
+        lines.append("")
+        
+        # Streaks
+        lines.append(f"[bold]📊 THỐNG KÊ:[/]")
+        lines.append(f"[bright_green]🔥 Max chuỗi thắng: {max_win_streak}[/]")
+        lines.append(f"[bright_red]❄️  Max chuỗi thua: {max_lose_streak}[/]")
+        
+        # Accuracy
+        if total_predictions > 0:
+            accuracy = correct_predictions / total_predictions
+            acc_color = "bright_green" if accuracy >= 0.6 else "yellow" if accuracy >= 0.5 else "red"
+            lines.append(f"[{acc_color}]🎯 Độ chính xác: {accuracy:.1%} ({correct_predictions}/{total_predictions})[/]")
+        
+        lines.append("")
+        lines.append(f"[dim]Đang chờ ván tiếp theo... {_spinner_char()}[/]")
+        
+        txt = "\n".join(lines)
+        
+        # Border color reflects result
+        border = None
+        if is_win:
+            border = 'bright_green'
+        elif is_loss:
+            border = 'bright_red'
+        
+        title = Text.assemble(
+            ("📊 ", "cyan"),
+            ("KẾT QUẢ ", "bold bright_cyan"),
+            ("✨", "yellow")
+        )
+        return Panel(Align.center(Text.from_markup(txt)), title=title, border_style=(border or (border_color or _rainbow_border_style())), box=box.DOUBLE)
     else:
         lines = []
         lines.append("Chờ ván mới...")
@@ -1633,30 +1977,74 @@ def build_mid(border_color: Optional[str] = None):
         return Panel(Align.center(Text.from_markup(txt)), title="TRẠNG THÁI", border_style=(border_color or _rainbow_border_style()))
 
 def build_bet_table(border_color: Optional[str] = None):
-    t = Table(title="Lịch sử cược (5 ván gần nhất)", box=box.SIMPLE, expand=True)
-    t.add_column("Ván", no_wrap=True)
-    t.add_column("Phòng", no_wrap=True)
-    t.add_column("Tiền", justify="right", no_wrap=True)
-    t.add_column("KQ", no_wrap=True)
-    t.add_column("Thuật toán", no_wrap=True)
+    """Build beautiful bet history table with colors and icons."""
+    t = Table(box=box.ROUNDED, expand=True, show_header=True, header_style="bold bright_cyan")
+    t.add_column("Ván", no_wrap=True, justify="center", width=8)
+    t.add_column("Phòng", no_wrap=True, width=18)
+    t.add_column("💰 Tiền", justify="right", no_wrap=True, width=12)
+    t.add_column("KQ", no_wrap=True, justify="center", width=10)
+    t.add_column("Conf", justify="center", width=8)
+    t.add_column("Delta", justify="right", width=10)
+    
     last5 = list(bet_history)[-5:]
     for b in reversed(last5):
         amt = b.get('amount') or 0
-        amt_fmt = f"{float(amt):,.4f}"
+        amt_fmt = f"{float(amt):,.2f}"
         res = str(b.get('result') or '-')
         algo = str(b.get('algo') or '-')
-        # color rows: thắng green, thua red, pending yellow
+        room_id = b.get('room', '-')
+        room_name = ROOM_NAMES.get(room_id, f"P{room_id}") if isinstance(room_id, int) else str(room_id)
+        
+        # Extract confidence from algo string if available
+        conf_str = "-"
+        if "Conf:" in algo:
+            try:
+                import re as re_module
+                match = re_module.search(r'Conf:\s*(\d+)%', algo)
+                if match:
+                    conf_pct = int(match.group(1))
+                    conf_color = _get_confidence_color(conf_pct / 100.0)
+                    conf_str = f"[{conf_color}]{conf_pct}%[/]"
+            except:
+                pass
+        
+        # Result with icon and color
         if res.lower().startswith('thắng') or res.lower().startswith('win'):
-            res_text = Text(res, style="green")
-            row_style = ""
+            res_text = "[bold bright_green]✅ Thắng[/]"
+            row_style = "on dark_green"
+            delta_val = b.get('delta', 0.0)
         elif res.lower().startswith('thua') or res.lower().startswith('lose'):
-            res_text = Text(res, style="red")
-            row_style = ""
+            res_text = "[bold bright_red]❌ Thua[/]"
+            row_style = "on dark_red"
+            delta_val = b.get('delta', 0.0)
         else:
-            res_text = Text(res, style="yellow")
+            res_text = "[yellow]⏳ Đang[/]"
             row_style = ""
-        t.add_row(str(b.get('issue') or '-'), str(b.get('room') or '-'), amt_fmt, res_text, algo)
-    return Panel(t, border_style=(border_color or _rainbow_border_style()))
+            delta_val = 0.0
+        
+        # Delta
+        if delta_val != 0:
+            delta_style = "bright_green" if delta_val > 0 else "bright_red"
+            delta_str = f"[{delta_style}]{delta_val:+.2f}[/]"
+        else:
+            delta_str = "[dim]—[/]"
+        
+        t.add_row(
+            str(b.get('issue') or '-'),
+            room_name,
+            amt_fmt,
+            res_text,
+            conf_str,
+            delta_str,
+            style=row_style
+        )
+    
+    title = Text.assemble(
+        ("📜 ", "yellow"),
+        ("LỊCH SỬ ", "bold bright_cyan"),
+        (f"(5 ván gần nhất)", "dim")
+    )
+    return Panel(t, title=title, border_style=(border_color or _rainbow_border_style()), box=box.DOUBLE)
 
 # -------------------- SETTINGS & START --------------------
 
