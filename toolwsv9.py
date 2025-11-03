@@ -698,6 +698,58 @@ class SuperIntelligenceEngine:
 
         return "; ".join(narrative)
 
+    def _generate_thoughts(self, rid: int, feats: Dict[str, float], meta: Dict[str, Any], ranked_conf: List[Tuple[int, float]]) -> List[str]:
+        thoughts: List[str] = []
+        conf = meta.get("confidence", 0.0)
+        risk = meta.get("risk", 0.0)
+        spread = meta.get("spread", 0.0)
+        alt_room = meta.get("alt_room")
+        survive = feats.get("survive_score", 0.0) if feats else 0.0
+        pressure = feats.get("pressure_score", 0.0) if feats else 0.0
+        momentum = feats.get("momentum_players", 0.0) if feats else 0.0
+        memory = feats.get("adaptive_memory", 0.0) if feats else 0.0
+
+        thoughts.append(f"[Đánh giá] Độ tin cậy {conf * 100:.1f}% | Rủi ro {risk * 100:.1f}% | Spread {spread * 100:.1f} điểm")
+
+        if survive >= 0.72:
+            thoughts.append("[Logic] Phòng đang có xác suất sống cao vượt ngưỡng an toàn")
+        elif survive >= 0.6:
+            thoughts.append("[Logic] Phòng giữ vững mức sống ổn định")
+        else:
+            thoughts.append("[Cảnh báo] Tỉ lệ sống chưa đạt tiêu chuẩn mạnh")
+
+        if pressure > 0.85:
+            thoughts.append("[Cảnh báo] Áp lực cược đang cao – cần cẩn trọng")
+        elif pressure < 0.55:
+            thoughts.append("[Logic] Áp lực cược đang nhẹ, phù hợp để theo")
+
+        if momentum > 0.25:
+            thoughts.append("[Logic] Lượng người chơi tăng tích cực hỗ trợ tín hiệu")
+        elif momentum < -0.15:
+            thoughts.append("[Cảnh báo] Người chơi rời đi, cân nhắc giảm mức cược")
+
+        if memory >= 0.2:
+            thoughts.append("[Logic] Bộ nhớ thắng của phòng đang được củng cố")
+        elif memory <= -0.2:
+            thoughts.append("[Cảnh báo] Chuỗi thua gần đây cần theo dõi")
+
+        if spread < 0.02 and alt_room is not None:
+            thoughts.append(f"[So sánh] Phòng {alt_room} có tín hiệu sát – theo dõi thêm")
+        elif spread >= 0.05:
+            thoughts.append("[Ưu tiên] Khoảng cách tự tin lớn, có thể tăng độ tin tưởng")
+
+        if conf < 0.6:
+            thoughts.append("[Quyết định] Skip vì dưới ngưỡng tin cậy 60%")
+        elif risk > 0.4:
+            thoughts.append("[Chiến thuật] Đặt nhẹ hoặc quan sát thêm do rủi ro cao")
+        else:
+            thoughts.append("[Chiến thuật] Có thể thực hiện cược với mức điều chỉnh AI đề xuất")
+
+        top3 = ", ".join([f"{rid}-{score * 100:.1f}%" for rid, score in ranked_conf[:3]])
+        thoughts.append(f"[Toàn cục] Top3 tín hiệu: {top3}")
+
+        return thoughts
+
     def _build_insight(self, rid: int, feats: Dict[str, float]) -> str:
         if not feats:
             return "Thiếu dữ liệu, dùng kinh nghiệm tổng hợp."
@@ -745,6 +797,17 @@ class SuperIntelligenceEngine:
                 "timestamp": human_ts(),
             }
             meta["logic_trace"] = self._derive_logic_trace(choice, feats, meta, confidence_map)
+            thoughts = self._generate_thoughts(choice, feats, meta, ranked_conf)
+            meta["thoughts"] = thoughts
+            if meta.get("should_skip"):
+                meta["verdict"] = "SKIP"
+                meta["action"] = "Chờ cơ hội tốt hơn"
+            elif risk > 0.4:
+                meta["verdict"] = "CAUTION"
+                meta["action"] = "Cược nhẹ / Giảm vốn"
+            else:
+                meta["verdict"] = "GO"
+                meta["action"] = "Thực hiện cược theo mức AI đề xuất"
             self._last_context = {
                 "room": choice,
                 "meta": meta,
@@ -849,6 +912,9 @@ def record_bet(issue: int, room_id: int, amount: float, resp: dict, algo_used: O
         rec["logic"] = meta.get("logic_trace")
         rec["risk"] = meta.get("risk")
         rec["spread"] = meta.get("spread")
+        rec["verdict"] = meta.get("verdict")
+        rec["action"] = meta.get("action")
+        rec["thoughts"] = meta.get("thoughts")
     bet_history.append(rec)
     return rec
 
@@ -865,14 +931,22 @@ def place_bet_async(issue: int, room_id: int, amount: float, algo_used: Optional
             spread = meta_copy.get("spread")
             logic = meta_copy.get("logic_trace")
             insight = meta_copy.get("insight")
+            verdict = meta_copy.get("verdict")
+            action = meta_copy.get("action")
+            thoughts = meta_copy.get("thoughts") or []
             if risk is not None or spread is not None:
                 risk_txt = f"Risk {risk * 100:.1f}%" if isinstance(risk, (int, float)) else "Risk ?"
                 spread_txt = f"Δ {spread * 100:.1f} điểm" if isinstance(spread, (int, float)) else "Δ ?"
                 console.print(f"[dim cyan]{risk_txt} | {spread_txt}[/]")
+            if verdict or action:
+                console.print(f"[dim white]Verdict: {verdict or '-'} | Action: {action or '-'}[/]")
             if logic:
                 console.print(f"[dim magenta]Logic: {logic}[/]")
             elif insight:
                 console.print(f"[dim magenta]Logic: {insight}[/]")
+            if thoughts:
+                preview = "; ".join(thoughts[:2])
+                console.print(f"[dim]Thoughts: {preview}[/]")
         time.sleep(random.uniform(0.02, 0.25))
         res = place_bet_http(issue, room_id, amount)
         rec = record_bet(issue, room_id, amount, res, algo_used=algo_used, meta=meta_copy)
@@ -944,6 +1018,15 @@ def lock_prediction_if_needed(force: bool = False):
                 console.print(f"[dim cyan]{' | '.join(extra_bits)}[/]")
         if meta.get("logic_trace"):
             console.print(f"[dim magenta]Logic: {meta['logic_trace']}[/]")
+        verdict = meta.get("verdict")
+        action = meta.get("action")
+        if verdict or action:
+            console.print(f"[dim white]Verdict: {verdict or '-'} | Action: {action or '-'}[/]")
+        thoughts = meta.get("thoughts") or []
+        if thoughts:
+            console.print(f"[dim]Thought 1: {thoughts[0]}[/]")
+            if len(thoughts) > 1:
+                console.print(f"[dim]Thought 2: {thoughts[1]}[/]")
     else:
         console.print("[bold blue]🧠 Meta Intellect đang đưa ra dự đoán tối ưu.[/]")
 
@@ -1504,6 +1587,13 @@ def build_mid(border_color: Optional[str] = None):
             lines.append("[yellow]⏸️ Khuyến nghị bỏ qua ván (rủi ro cao)[/]")
         if meta.get("logic_trace"):
             lines.append(f"Logic: {meta['logic_trace']}")
+        if meta.get("verdict") or meta.get("action"):
+            lines.append(f"Phán quyết: {meta.get('verdict', '-')}, Hành động: {meta.get('action', '-')}")
+        thoughts = meta.get("thoughts") or []
+        if thoughts:
+            lines.append(f"Suy nghĩ 1: {thoughts[0]}")
+            if len(thoughts) > 1:
+                lines.append(f"Suy nghĩ 2: {thoughts[1]}")
         lines.append(f"Phòng sát thủ vào ván trước: {ROOM_NAMES.get(last_killed_room, '-')}")
         lines.append(f"Chuỗi thắng: {win_streak}  |  Chuỗi thua: {lose_streak}")
         lines.append("")
@@ -1572,7 +1662,10 @@ def build_bet_table(border_color: Optional[str] = None):
         else:
             risk_fmt = "-"
         algo = str(b.get('algo') or '-')
-        logic = b.get('logic') or b.get('insight') or '-'
+        verdict = b.get('verdict') or '-'
+        action = b.get('action') or '-'
+        logic_core = b.get('logic') or b.get('insight') or '-'
+        logic = f"{verdict} | {action} | {logic_core}"
         # color rows: thắng green, thua red, pending yellow
         if res.lower().startswith('thắng') or res.lower().startswith('win'):
             res_text = Text(res, style="green")
