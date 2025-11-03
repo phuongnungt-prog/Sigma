@@ -1,4 +1,4 @@
-# toolws.py (HYPER UPGRADED) - Hyper Adaptive AI siêu trí tuệ
+# toolws.py (META INTELLECT EDITION) - Meta Intellect AI siêu trí tuệ
 from __future__ import annotations
 
 def show_banner():
@@ -91,6 +91,7 @@ room_stats: Dict[int, Dict[str, Any]] = {r: {"kills": 0, "survives": 0, "last_ki
 predicted_room: Optional[int] = None
 last_killed_room: Optional[int] = None
 prediction_locked: bool = False
+last_prediction_meta: Dict[str, Any] = {}
 
 # balances & pnl
 current_build: Optional[float] = None
@@ -151,9 +152,9 @@ SELECTION_CONFIG = {
 }
 
 # selection mode duy nhất
-ALGO_ID = "HYPER_AI"
+ALGO_ID = "META_INTELLECT"
 SELECTION_MODES = {
-    ALGO_ID: "Hyper Adaptive AI (siêu trí tuệ)"
+    ALGO_ID: "Meta Intellect AI (siêu trí tuệ)"
 }
 
 settings = {"algo": ALGO_ID}
@@ -565,22 +566,318 @@ class HyperAdaptiveSelector:
             self._last_votes = []
 
 
-selector = HyperAdaptiveSelector(ROOM_ORDER)
+class SuperIntelligenceEngine:
+    def __init__(self, room_ids: List[int]):
+        self.core = HyperAdaptiveSelector(room_ids)
+        self.room_ids = list(room_ids)
+        self._performance: deque = deque(maxlen=180)
+        self._room_memory: Dict[int, deque] = {rid: deque(maxlen=50) for rid in self.room_ids}
+        self._last_context: Dict[str, Any] = {}
+        self._volatility: float = 0.0
+        self._rng = random.Random(HYPER_AI_SEED ^ 0x5F3759DF)
+        self._lock = threading.Lock()
+
+    @staticmethod
+    def _clip(value: float, lo: float = 0.05, hi: float = 0.97) -> float:
+        return max(lo, min(hi, value))
+
+    def _recent_win_rate(self, window: int = 40) -> float:
+        if not self._performance:
+            return 0.56
+        vals = list(self._performance)[-window:]
+        return sum(vals) / max(1, len(vals))
+
+    def _room_win_rate(self, rid: int, window: int = 25) -> float:
+        mem = self._room_memory.get(rid)
+        if not mem:
+            return 0.56
+        vals = list(mem)[-window:]
+        if not vals:
+            return 0.56
+        return sum(vals) / len(vals)
+
+    def _estimate_confidence(self, rid: int, features_map: Dict[int, Dict[str, float]]) -> float:
+        feats = (features_map or {}).get(rid) or {}
+        survive = feats.get("survive_score", 0.55)
+        kill_gap = feats.get("kill_gap_norm", 0.4)
+        bet_norm = feats.get("bet_norm", 0.5)
+        players_norm = feats.get("players_norm", 0.4)
+        rec_pen = feats.get("recent_pen", 0.0)
+        last_pen = feats.get("last_pen", 0.0)
+        cold = feats.get("cold_score", 0.0)
+        adaptive = (feats.get("adaptive_memory", 0.0) + 1.0) / 2.0
+        momentum = self._clip(0.5 + 0.5 * ((feats.get("momentum_players", 0.0) + feats.get("momentum_bet", 0.0)) / 2.0), 0.0, 1.0)
+        pressure = feats.get("pressure_score", 0.5)
+        streak = feats.get("streak_pressure", 0.0)
+        memory_bonus = self._clip(1.0 - (rec_pen + last_pen), 0.0, 1.0)
+
+        base = (
+            0.36 * survive
+            + 0.18 * kill_gap
+            + 0.11 * bet_norm
+            + 0.08 * players_norm
+            + 0.08 * adaptive
+            + 0.07 * memory_bonus
+            + 0.05 * momentum
+        )
+        base -= 0.08 * cold
+        base -= 0.06 * pressure
+        base -= 0.04 * max(streak, 0.0)
+
+        global_wr = self._recent_win_rate()
+        room_wr = self._room_win_rate(rid)
+        combined = 0.6 * base + 0.25 * global_wr + 0.15 * room_wr
+        combined -= 0.05 * self._clip(self._volatility, 0.0, 1.0)
+        combined += self._rng.uniform(-0.012, 0.012)
+        return self._clip(combined)
+
+    def _recommend_bet_multiplier(self, confidence: float, feats: Dict[str, float]) -> float:
+        pressure = (feats or {}).get("pressure_score", 0.0)
+        stability = 1.0 - min(0.4, max(0.0, pressure - 0.55))
+        if confidence >= 0.82:
+            base = 1.35
+        elif confidence >= 0.72:
+            base = 1.18
+        elif confidence >= 0.62:
+            base = 1.07
+        elif confidence >= 0.52:
+            base = 1.00
+        elif confidence >= 0.45:
+            base = 0.88
+        else:
+            base = 0.72
+        return self._clip(base * stability, 0.6, 1.4)
+
+    def _should_skip(self, confidence: float, feats: Dict[str, float]) -> bool:
+        if confidence < 0.60:
+            return True
+        if not feats:
+            return False
+        high_pressure = feats.get("pressure_score", 0.0) > 0.82
+        cold = feats.get("cold_score", 0.0) > 0.45
+        survive_soft = feats.get("survive_score", 0.0) < 0.58
+        return high_pressure and cold or (confidence < 0.66 and survive_soft)
+
+    def _derive_logic_trace(self, rid: int, feats: Dict[str, float], meta: Dict[str, Any], confidence_map: Dict[int, float]) -> str:
+        narrative: List[str] = []
+        conf = meta.get("confidence", 0.0)
+        spread = meta.get("spread", 0.0)
+        risk = meta.get("risk", 0.0)
+        alt_room = meta.get("alt_room")
+
+        if conf >= 0.82:
+            narrative.append("độ tin cậy rất cao")
+        elif conf >= 0.72:
+            narrative.append("độ tin cậy tốt")
+        elif conf >= 0.60:
+            narrative.append("đạt ngưỡng an toàn")
+
+        if feats:
+            if feats.get("survive_score", 0.0) >= 0.72:
+                narrative.append("tỉ lệ sống vượt chuẩn")
+            if feats.get("kill_gap_norm", 0.0) >= 0.6:
+                narrative.append("xa lần sát thủ gần nhất")
+            if feats.get("recent_pen", 1.0) <= 0.12:
+                narrative.append("áp lực cược thấp")
+            if feats.get("momentum_players", 0.0) >= 0.25:
+                narrative.append("đà người chơi tăng")
+            if feats.get("pressure_score", 0.0) > 0.85:
+                narrative.append("áp lực cao cần cảnh giác")
+
+        if spread > 0 and isinstance(alt_room, int):
+            alt_conf = confidence_map.get(alt_room)
+            if alt_conf is not None:
+                diff = (conf - alt_conf) * 100.0
+                narrative.append(f"cao hơn phòng {alt_room} {diff:.1f} điểm")
+
+        if risk >= 0.35:
+            narrative.append(f"rủi ro {risk * 100:.0f}%")
+
+        if not narrative:
+            narrative.append("dữ liệu trung lập")
+
+        return "; ".join(narrative)
+
+    def _generate_thoughts(self, rid: int, feats: Dict[str, float], meta: Dict[str, Any], ranked_conf: List[Tuple[int, float]]) -> List[str]:
+        thoughts: List[str] = []
+        conf = meta.get("confidence", 0.0)
+        risk = meta.get("risk", 0.0)
+        spread = meta.get("spread", 0.0)
+        alt_room = meta.get("alt_room")
+        survive = feats.get("survive_score", 0.0) if feats else 0.0
+        pressure = feats.get("pressure_score", 0.0) if feats else 0.0
+        momentum = feats.get("momentum_players", 0.0) if feats else 0.0
+        memory = feats.get("adaptive_memory", 0.0) if feats else 0.0
+
+        thoughts.append(f"[Đánh giá] Độ tin cậy {conf * 100:.1f}% | Rủi ro {risk * 100:.1f}% | Spread {spread * 100:.1f} điểm")
+
+        if survive >= 0.72:
+            thoughts.append("[Logic] Phòng đang có xác suất sống cao vượt ngưỡng an toàn")
+        elif survive >= 0.6:
+            thoughts.append("[Logic] Phòng giữ vững mức sống ổn định")
+        else:
+            thoughts.append("[Cảnh báo] Tỉ lệ sống chưa đạt tiêu chuẩn mạnh")
+
+        if pressure > 0.85:
+            thoughts.append("[Cảnh báo] Áp lực cược đang cao – cần cẩn trọng")
+        elif pressure < 0.55:
+            thoughts.append("[Logic] Áp lực cược đang nhẹ, phù hợp để theo")
+
+        if momentum > 0.25:
+            thoughts.append("[Logic] Lượng người chơi tăng tích cực hỗ trợ tín hiệu")
+        elif momentum < -0.15:
+            thoughts.append("[Cảnh báo] Người chơi rời đi, cân nhắc giảm mức cược")
+
+        if memory >= 0.2:
+            thoughts.append("[Logic] Bộ nhớ thắng của phòng đang được củng cố")
+        elif memory <= -0.2:
+            thoughts.append("[Cảnh báo] Chuỗi thua gần đây cần theo dõi")
+
+        if spread < 0.02 and alt_room is not None:
+            thoughts.append(f"[So sánh] Phòng {alt_room} có tín hiệu sát – theo dõi thêm")
+        elif spread >= 0.05:
+            thoughts.append("[Ưu tiên] Khoảng cách tự tin lớn, có thể tăng độ tin tưởng")
+
+        if conf < 0.6:
+            thoughts.append("[Quyết định] Skip vì dưới ngưỡng tin cậy 60%")
+        elif risk > 0.4:
+            thoughts.append("[Chiến thuật] Đặt nhẹ hoặc quan sát thêm do rủi ro cao")
+        else:
+            thoughts.append("[Chiến thuật] Có thể thực hiện cược với mức điều chỉnh AI đề xuất")
+
+        top3 = ", ".join([f"{rid}-{score * 100:.1f}%" for rid, score in ranked_conf[:3]])
+        thoughts.append(f"[Toàn cục] Top3 tín hiệu: {top3}")
+
+        return thoughts
+
+    def _build_insight(self, rid: int, feats: Dict[str, float]) -> str:
+        if not feats:
+            return "Thiếu dữ liệu, dùng kinh nghiệm tổng hợp."
+        reasons: List[str] = []
+        if feats.get("survive_score", 0.0) > 0.65:
+            reasons.append("tỉ lệ sống cao")
+        if feats.get("kill_gap_norm", 0.0) > 0.55:
+            reasons.append("lâu chưa bị sát thủ")
+        if feats.get("adaptive_memory", 0.0) > 0.2:
+            reasons.append("chuỗi thắng ổn định")
+        if feats.get("recent_pen", 1.0) < 0.15:
+            reasons.append("áp lực cược thấp")
+        if feats.get("momentum_players", 0.0) > 0.2:
+            reasons.append("người chơi tăng ổn định")
+        if feats.get("volume_share", 1.0) < 0.4:
+            reasons.append("khối lượng kín đáo")
+        if not reasons:
+            reasons.append("cân bằng lợi nhuận và rủi ro tối ưu")
+        return ", ".join(reasons[:3])
+
+    def predict(self) -> Tuple[int, str, Dict[str, Any]]:
+        with self._lock:
+            choice, algo_id = self.core.select_room()
+            features_map = dict(self.core._last_features)
+            confidence_map = {rid: self._estimate_confidence(rid, features_map) for rid in self.room_ids}
+            confidence = confidence_map.get(choice, 0.56)
+            feats = features_map.get(choice, {})
+            risk = self._clip(1.0 - confidence, 0.0, 1.0)
+            ranked_conf = sorted(confidence_map.items(), key=lambda kv: kv[1], reverse=True)
+            spread = 0.0
+            alt_room = None
+            if len(ranked_conf) > 1:
+                alt_room, alt_conf = ranked_conf[1]
+                spread = confidence - alt_conf
+            meta = {
+                "confidence": confidence,
+                "risk": risk,
+                "bet_multiplier": self._recommend_bet_multiplier(confidence, feats),
+                "should_skip": self._should_skip(confidence, feats),
+                "insight": self._build_insight(choice, feats),
+                "recent_win_rate": self._recent_win_rate(),
+                "room_win_rate": self._room_win_rate(choice),
+                "spread": spread,
+                "alt_room": alt_room,
+                "timestamp": human_ts(),
+            }
+            meta["logic_trace"] = self._derive_logic_trace(choice, feats, meta, confidence_map)
+            thoughts = self._generate_thoughts(choice, feats, meta, ranked_conf)
+            meta["thoughts"] = thoughts
+            if meta.get("should_skip"):
+                meta["verdict"] = "SKIP"
+                meta["action"] = "Chờ cơ hội tốt hơn"
+            elif risk > 0.4:
+                meta["verdict"] = "CAUTION"
+                meta["action"] = "Cược nhẹ / Giảm vốn"
+            else:
+                meta["verdict"] = "GO"
+                meta["action"] = "Thực hiện cược theo mức AI đề xuất"
+            self._last_context = {
+                "room": choice,
+                "meta": meta,
+                "features_map": features_map,
+                "ts": time.time(),
+            }
+            return choice, algo_id, meta
+
+    def learn(self, predicted_room: Optional[int], killed_room: Optional[int]):
+        if predicted_room is None:
+            return
+        with self._lock:
+            self.core.update(predicted_room, killed_room)
+            if killed_room is None:
+                return
+            win = 1 if int(predicted_room) != int(killed_room) else 0
+            self._performance.append(win)
+            if predicted_room in self._room_memory:
+                self._room_memory[predicted_room].append(win)
+            if killed_room in self._room_memory:
+                self._room_memory[killed_room].append(0)
+            perf_list = list(self._performance)
+            if len(perf_list) >= 2:
+                diffs = 0.0
+                for i in range(1, len(perf_list)):
+                    diffs += abs(perf_list[i] - perf_list[i - 1])
+                self._volatility = diffs / (len(perf_list) - 1)
+
+    def last_meta(self) -> Dict[str, Any]:
+        if not self._last_context:
+            return {}
+        return dict(self._last_context.get("meta", {}))
+
+    def get_recent_win_rate(self) -> float:
+        return self._recent_win_rate()
+
+    def get_room_win_rate(self, rid: int) -> float:
+        return self._room_win_rate(rid)
+
+    def suggest_wager(self, martingale_bet: float, base_bet: float) -> float:
+        meta = self.last_meta()
+        if not meta:
+            return martingale_bet
+        suggested = martingale_bet * meta.get("bet_multiplier", 1.0)
+        suggested = max(base_bet * 0.5, suggested)
+        suggested = min(suggested, SELECTION_CONFIG.get("max_bet_allowed", float("inf")))
+        suggested = max(suggested, 0.0)
+        return round(suggested, 4)
+
+
+super_engine = SuperIntelligenceEngine(ROOM_ORDER)
 
 
 def choose_room(mode: str = ALGO_ID) -> Tuple[int, str]:
+    global last_prediction_meta
     try:
-        return selector.select_room()
+        choice, algo_id, meta = super_engine.predict()
+        last_prediction_meta = meta
+        return choice, algo_id
     except Exception as exc:
-        log_debug(f"HyperAdaptiveSelector choose failed: {exc}")
+        log_debug(f"SuperIntelligenceEngine choose failed: {exc}")
+        last_prediction_meta = {}
         return ROOM_ORDER[0], ALGO_ID
 
 
 def update_formulas_after_result(predicted_room: Optional[int], killed_room: Optional[int], mode: str = ALGO_ID, lr: float = 0.12):
     try:
-        selector.update(predicted_room, killed_room)
+        super_engine.learn(predicted_room, killed_room)
     except Exception as exc:
-        log_debug(f"HyperAdaptiveSelector update failed: {exc}")
+        log_debug(f"SuperIntelligenceEngine update failed: {exc}")
 
 
 # -------------------- BETTING HELPERS --------------------
@@ -606,19 +903,53 @@ def place_bet_http(issue: int, room_id: int, amount: float) -> dict:
         return {"error": str(e)}
 
 
-def record_bet(issue: int, room_id: int, amount: float, resp: dict, algo_used: Optional[str] = None) -> dict:
+def record_bet(issue: int, room_id: int, amount: float, resp: dict, algo_used: Optional[str] = None, meta: Optional[Dict[str, Any]] = None) -> dict:
     now = datetime.now(tz).strftime("%H:%M:%S")
     rec = {"issue": issue, "room": room_id, "amount": float(amount), "time": now, "resp": resp, "result": "Đang", "algo": algo_used, "delta": 0.0, "win_streak": win_streak, "lose_streak": lose_streak}
+    if meta:
+        rec["confidence"] = meta.get("confidence")
+        rec["insight"] = meta.get("insight")
+        rec["logic"] = meta.get("logic_trace")
+        rec["risk"] = meta.get("risk")
+        rec["spread"] = meta.get("spread")
+        rec["verdict"] = meta.get("verdict")
+        rec["action"] = meta.get("action")
+        rec["thoughts"] = meta.get("thoughts")
     bet_history.append(rec)
     return rec
 
 
-def place_bet_async(issue: int, room_id: int, amount: float, algo_used: Optional[str] = None):
+def place_bet_async(issue: int, room_id: int, amount: float, algo_used: Optional[str] = None, meta: Optional[Dict[str, Any]] = None):
     def worker():
-        console.print(f"[cyan]Đang đặt {amount} BUILD -> PHÒNG_{room_id} (v{issue}) — Thuật toán: {algo_used}[/]")
+        meta_copy = dict(meta) if meta else None
+        if meta_copy and meta_copy.get("confidence") is not None:
+            console.print(f"[cyan]Đang đặt {amount} BUILD -> PHÒNG_{room_id} (v{issue}) — Thuật toán: {algo_used} | Độ tự tin: {meta_copy['confidence'] * 100:.1f}%[/]")
+        else:
+            console.print(f"[cyan]Đang đặt {amount} BUILD -> PHÒNG_{room_id} (v{issue}) — Thuật toán: {algo_used}[/]")
+        if meta_copy:
+            risk = meta_copy.get("risk")
+            spread = meta_copy.get("spread")
+            logic = meta_copy.get("logic_trace")
+            insight = meta_copy.get("insight")
+            verdict = meta_copy.get("verdict")
+            action = meta_copy.get("action")
+            thoughts = meta_copy.get("thoughts") or []
+            if risk is not None or spread is not None:
+                risk_txt = f"Risk {risk * 100:.1f}%" if isinstance(risk, (int, float)) else "Risk ?"
+                spread_txt = f"Δ {spread * 100:.1f} điểm" if isinstance(spread, (int, float)) else "Δ ?"
+                console.print(f"[dim cyan]{risk_txt} | {spread_txt}[/]")
+            if verdict or action:
+                console.print(f"[dim white]Verdict: {verdict or '-'} | Action: {action or '-'}[/]")
+            if logic:
+                console.print(f"[dim magenta]Logic: {logic}[/]")
+            elif insight:
+                console.print(f"[dim magenta]Logic: {insight}[/]")
+            if thoughts:
+                preview = "; ".join(thoughts[:2])
+                console.print(f"[dim]Thoughts: {preview}[/]")
         time.sleep(random.uniform(0.02, 0.25))
         res = place_bet_http(issue, room_id, amount)
-        rec = record_bet(issue, room_id, amount, res, algo_used=algo_used)
+        rec = record_bet(issue, room_id, amount, res, algo_used=algo_used, meta=meta_copy)
         if isinstance(res, dict) and (res.get("msg") == "ok" or res.get("code") == 0 or res.get("status") in ("ok", 1)):
             bet_sent_for_issue.add(issue)
             console.print(f"[green]✅ Đặt thành công {amount} BUILD vào PHÒNG_{room_id} (v{issue}).[/]")
@@ -661,6 +992,50 @@ def lock_prediction_if_needed(force: bool = False):
     prediction_locked = True
     ui_state = "PREDICTED"
 
+    meta = super_engine.last_meta()
+    if meta:
+        conf_pct = meta.get("confidence", 0.0) * 100.0
+        recent_wr = meta.get("recent_win_rate")
+        room_wr = meta.get("room_win_rate")
+        stats_bits = [f"Độ tự tin {conf_pct:.1f}%"]
+        if isinstance(recent_wr, (int, float)):
+            stats_bits.append(f"winrate 40v {recent_wr * 100:.1f}%")
+        if isinstance(room_wr, (int, float)):
+            stats_bits.append(f"phòng {predicted_room}: {room_wr * 100:.1f}%")
+        insight = meta.get("insight") or "đang phân tích dữ liệu nâng cao"
+        console.print(f"[bold blue]🧠 Meta Intellect chọn PHÒNG_{predicted_room}: {insight}[/]")
+        console.print(f"[blue]↳ {' | '.join(stats_bits)}[/]")
+        spread = meta.get("spread")
+        risk = meta.get("risk")
+        alt_room = meta.get("alt_room")
+        if isinstance(spread, (int, float)) or isinstance(risk, (int, float)):
+            extra_bits = []
+            if isinstance(spread, (int, float)):
+                extra_bits.append(f"Δ so với phòng {alt_room or '?'}: {spread * 100:.1f} điểm")
+            if isinstance(risk, (int, float)):
+                extra_bits.append(f"Risk: {risk * 100:.1f}%")
+            if extra_bits:
+                console.print(f"[dim cyan]{' | '.join(extra_bits)}[/]")
+        if meta.get("logic_trace"):
+            console.print(f"[dim magenta]Logic: {meta['logic_trace']}[/]")
+        verdict = meta.get("verdict")
+        action = meta.get("action")
+        if verdict or action:
+            console.print(f"[dim white]Verdict: {verdict or '-'} | Action: {action or '-'}[/]")
+        thoughts = meta.get("thoughts") or []
+        if thoughts:
+            console.print(f"[dim]Thought 1: {thoughts[0]}[/]")
+            if len(thoughts) > 1:
+                console.print(f"[dim]Thought 2: {thoughts[1]}[/]")
+    else:
+        console.print("[bold blue]🧠 Meta Intellect đang đưa ra dự đoán tối ưu.[/]")
+
+    if meta and meta.get("should_skip"):
+        console.print(f"[yellow]⚠️ Meta Intellect cảnh báo rủi ro cao cho ván này.[/]")
+        if run_mode == "AUTO":
+            console.print(f"[yellow]⚠️ Meta Intellect đánh giá rủi ro cao – bỏ qua ván này để bảo toàn vốn.[/]")
+            return
+
     # place bet if AUTO
     if run_mode == "AUTO" and not skip_next_round_flag:
         # get balance quickly (non-blocking - allow poller to update if needed)
@@ -679,12 +1054,18 @@ def lock_prediction_if_needed(force: bool = False):
         else:
             console.print(f"[green]✅ current_bet không None: {current_bet}[/green]")
         amt = float(current_bet)
+        if meta:
+            suggested_amt = super_engine.suggest_wager(amt, base_bet)
+            if not math.isclose(suggested_amt, amt, rel_tol=1e-4, abs_tol=1e-4):
+                console.print(f"[magenta]🧠 Điều chỉnh vốn theo Meta Intellect: {amt} → {suggested_amt} BUILD[/magenta]")
+            amt = suggested_amt
+            current_bet = amt
         console.print(f"[cyan]💰 Đặt cược: {amt} BUILD (current_bet={current_bet}, base_bet={base_bet}, multiplier={multiplier})[/cyan]")
         if amt <= 0:
             console.print("[yellow]⚠️ Số tiền đặt không hợp lệ (<=0). Bỏ qua.[/]")
             prediction_locked = False
             return
-        place_bet_async(issue_id, predicted_room, amt, algo_used=algo_used)
+        place_bet_async(issue_id, predicted_room, amt, algo_used=algo_used, meta=meta)
         _rounds_placed_since_skip += 1
         if bet_rounds_before_skip > 0 and _rounds_placed_since_skip >= bet_rounds_before_skip:
             skip_next_round_flag = True
@@ -812,9 +1193,9 @@ def _mark_bet_result_from_issue(res_issue: Optional[int], krid: int):
         except Exception:
             pass
 
-    # --- Hyper AI: cập nhật mô hình sau khi có kết quả ---
+    # --- Meta Intellect: cập nhật mô hình sau khi có kết quả ---
     try:
-        # cập nhật mô hình Hyper Adaptive AI dựa trên kết quả thực tế
+        # cập nhật bộ não Meta Intellect dựa trên kết quả thực tế
         update_formulas_after_result(predicted_room, krid, settings.get("algo", ALGO_ID))
     except Exception as e:
         log_debug(f"update_formulas_after_result err: {e}")
@@ -1080,7 +1461,8 @@ def build_header(border_color: Optional[str] = None):
     tbl.add_column(ratio=2)
     tbl.add_column(ratio=1)
 
-    left = Text("VUA THOÁT HIỂM VIP", style="bold cyan")
+    left_main = Text.assemble(("META INTELLECT", "bold bright_cyan"), ("  //  XWORLD AUTOPILOT", "bright_black"))
+    left_tag = Text("Neural Risk Guardian", style="italic cyan")
 
     b = f"{current_build:,.4f}" if isinstance(current_build, (int, float)) else (str(current_build) if current_build is not None else "-")
     u = f"{current_usdt:,.4f}" if isinstance(current_usdt, (int, float)) else (str(current_usdt) if current_usdt is not None else "-")
@@ -1090,13 +1472,19 @@ def build_header(border_color: Optional[str] = None):
     pnl_str = f"{pnl_val:+,.4f}"
     pnl_style = "green bold" if pnl_val > 0 else ("red bold" if pnl_val < 0 else "yellow")
 
-    bal = Text.assemble((f"USDT: {u}", "bold"), ("   "), (f"XWORLD: {x}", "bold"), ("   "), (f"BUILD: {b}", "bold"))
+    bal = Text.assemble(("USDT", "bright_black"), (" ⦿ ", "dim"), (f"{u}", "bold white"), ("   XWORLD", "bright_black"), (" ⦿ ", "dim"), (f"{x}", "bold cyan"), ("   BUILD", "bright_black"), (" ⦿ ", "dim"), (f"{b}", "bold magenta"))
 
     algo_label = SELECTION_MODES.get(settings.get('algo'), settings.get('algo'))
 
     right_lines = []
     right_lines.append(f"Thuật toán: {algo_label}")
     right_lines.append(f"Lãi/lỗ: [{pnl_style}] {pnl_str} [/{pnl_style}]")
+    try:
+        recent_wr = super_engine.get_recent_win_rate() * 100.0
+        right_lines.append(f"Winrate 40v: {recent_wr:.1f}%")
+    except Exception:
+        pass
+    right_lines.append("Ngưỡng an toàn: ≥60% TLT")
     right_lines.append(f"Phiên: {issue_id or '-'}")
     right_lines.append(f"chuỗi: thắng={max_win_streak} / thua={max_lose_streak}")
     if stop_when_profit_reached and profit_target is not None:
@@ -1106,9 +1494,10 @@ def build_header(border_color: Optional[str] = None):
 
     right = Text.from_markup("\n".join(right_lines))
 
-    tbl.add_row(left, right)
+    tbl.add_row(left_main, right)
     tbl.add_row(bal, Text(f"{datetime.now(tz).strftime('%H:%M:%S')}  •  {_spinner_char()}", style="dim"))
-    panel = Panel(tbl, box=box.ROUNDED, padding=(0,1), border_style=(border_color or _rainbow_border_style()))
+    tbl.add_row(left_tag, Text("Autonomous skip dưới 60%", style="dim cyan"))
+    panel = Panel(tbl, box=box.DOUBLE, padding=(0,1), border_style=(border_color or _rainbow_border_style()))
     return panel
 
 def build_rooms_table(border_color: Optional[str] = None):
@@ -1142,46 +1531,37 @@ def build_mid(border_color: Optional[str] = None):
     # ANALYZING: show a blur / loading visual from 45s down to 10s
     if ui_state == "ANALYZING":
         lines = []
-        lines.append(f"ĐANG PHÂN TÍCH PHÒNG AN TOÀN NHẤT  {_spinner_char()}")
-        # show countdown if available (do not show explicit 'will place at Xs' note)
+        lines.append("[bold cyan]META INTELLECT • LIVE ANALYTICS[/]")
         if count_down is not None:
             try:
                 cd = int(count_down)
-                lines.append(f"Đếm ngược tới kết quả: {cd}s")
+                lines.append(f"Không gian an toàn mở sau: [bright_white]{cd:02d}s[/] | Ngưỡng ≥60%")
             except Exception:
-                pass
+                lines.append("Đang đồng bộ đếm ngược...")
         else:
-            lines.append("Chưa nhận được dữ liệu đếm ngược...")
+            lines.append("Đang đồng bộ dữ liệu đếm ngược...")
 
-        # blur visual: animated blocks with varying fill to give a 'loading/blur' impression
-        if analysis_blur:
-            bar_len = 36
-            blocks = []
-            tbase = int(time.time() * 5)
-            for i in range(bar_len):
-                # pseudo-random flicker deterministic-ish by tbase + i
-                val = (tbase + i) % 7
-                ch = "█" if val in (0, 1, 2) else ("▓" if val in (3, 4) else "░")
-                color = RAINBOW_COLORS[(i + tbase) % len(RAINBOW_COLORS)]
-                blocks.append(f"[{color}]{ch}[/{color}]")
-            lines.append("".join(blocks))
-            lines.append("")
-            lines.append("AI ĐANG TÍNH TOÁN 10S CUỐI VÀO BUID")
-        else:
-            # fallback compact progress bar (no percent text)
-            bar_len = 24
-            filled = int((time.time() * 2) % (bar_len + 1))
-            bars = []
-            for i in range(bar_len):
-                if i < filled:
-                    color = RAINBOW_COLORS[i % len(RAINBOW_COLORS)]
-                    bars.append(f"[{color}]█[/{color}]")
-                else:
-                    bars.append("·")
-            lines.append("".join(bars))
+        spectrum = "▁▂▃▄▅▆▇█"
+        tbase = int(time.time() * 6)
+        bar_len = 28
+        bar = []
+        for i in range(bar_len):
+            idx = (tbase + i) % len(spectrum)
+            color = RAINBOW_COLORS[(tbase + i) % len(RAINBOW_COLORS)]
+            bar.append(f"[{color}]{spectrum[idx]}[/]")
+        lines.append("".join(bar))
 
-        lines.append("")
-        lines.append(f"Phòng sát thủ vào ván trước: {ROOM_NAMES.get(last_killed_room, '-')}")
+        heat_cells = []
+        matrix_chars = ["░", "▒", "▓", "█"]
+        for i in range(24):
+            idx = (tbase * 3 + i * 5) % len(matrix_chars)
+            color = RAINBOW_COLORS[(tbase + i * 2) % len(RAINBOW_COLORS)]
+            heat_cells.append(f"[{color}]{matrix_chars[idx]}[/]")
+        lines.append("".join(heat_cells))
+
+        last_room = ROOM_NAMES.get(last_killed_room, '-')
+        lines.append(f"Phòng sát thủ gần nhất: [red]{last_room}[/]")
+        lines.append("Đang quét: áp lực cược, ký ức chuỗi, tốc độ người chơi...")
         txt = "\n".join(lines)
         return Panel(Align.center(Text.from_markup(txt), vertical="middle"), title="PHÂN TÍCH", border_style=(border_color or _rainbow_border_style()))
 
@@ -1191,6 +1571,29 @@ def build_mid(border_color: Optional[str] = None):
         lines = []
         lines.append(f"AI chọn: {name}  — [green]KẾT QUẢ DỰ ĐOÁN[/]")
         lines.append(f"Số đặt: {last_bet_amt} BUILD")
+        meta = last_prediction_meta or {}
+        if isinstance(meta.get("confidence"), (int, float)):
+            lines.append(f"Độ tự tin: {meta['confidence'] * 100:.1f}%")
+        if isinstance(meta.get("risk"), (int, float)):
+            lines.append(f"Rủi ro dự kiến: {meta['risk'] * 100:.1f}%")
+        if meta.get("bet_multiplier") is not None:
+            lines.append(f"Điều chỉnh vốn: ×{meta['bet_multiplier']:.2f}")
+        if isinstance(meta.get("spread"), (int, float)):
+            alt_room = meta.get("alt_room")
+            lines.append(f"Chênh lệch an toàn: {meta['spread'] * 100:.1f} điểm so với phòng {alt_room if alt_room else '?'}")
+        if meta.get("insight"):
+            lines.append(f"Nhận xét: {meta['insight']}")
+        if meta.get("should_skip"):
+            lines.append("[yellow]⏸️ Khuyến nghị bỏ qua ván (rủi ro cao)[/]")
+        if meta.get("logic_trace"):
+            lines.append(f"Logic: {meta['logic_trace']}")
+        if meta.get("verdict") or meta.get("action"):
+            lines.append(f"Phán quyết: {meta.get('verdict', '-')}, Hành động: {meta.get('action', '-')}")
+        thoughts = meta.get("thoughts") or []
+        if thoughts:
+            lines.append(f"Suy nghĩ 1: {thoughts[0]}")
+            if len(thoughts) > 1:
+                lines.append(f"Suy nghĩ 2: {thoughts[1]}")
         lines.append(f"Phòng sát thủ vào ván trước: {ROOM_NAMES.get(last_killed_room, '-')}")
         lines.append(f"Chuỗi thắng: {win_streak}  |  Chuỗi thua: {lose_streak}")
         lines.append("")
@@ -1238,14 +1641,31 @@ def build_bet_table(border_color: Optional[str] = None):
     t.add_column("Ván", no_wrap=True)
     t.add_column("Phòng", no_wrap=True)
     t.add_column("Tiền", justify="right", no_wrap=True)
+    t.add_column("Conf", justify="right", no_wrap=True)
+    t.add_column("Risk", justify="right", no_wrap=True)
     t.add_column("KQ", no_wrap=True)
+    t.add_column("Logic", overflow="fold")
     t.add_column("Thuật toán", no_wrap=True)
     last5 = list(bet_history)[-5:]
     for b in reversed(last5):
         amt = b.get('amount') or 0
         amt_fmt = f"{float(amt):,.4f}"
         res = str(b.get('result') or '-')
+        conf_val = b.get('confidence')
+        if isinstance(conf_val, (int, float)):
+            conf_fmt = f"{conf_val * 100:.1f}%"
+        else:
+            conf_fmt = "-"
+        risk_val = b.get('risk')
+        if isinstance(risk_val, (int, float)):
+            risk_fmt = f"{risk_val * 100:.1f}%"
+        else:
+            risk_fmt = "-"
         algo = str(b.get('algo') or '-')
+        verdict = b.get('verdict') or '-'
+        action = b.get('action') or '-'
+        logic_core = b.get('logic') or b.get('insight') or '-'
+        logic = f"{verdict} | {action} | {logic_core}"
         # color rows: thắng green, thua red, pending yellow
         if res.lower().startswith('thắng') or res.lower().startswith('win'):
             res_text = Text(res, style="green")
@@ -1256,7 +1676,7 @@ def build_bet_table(border_color: Optional[str] = None):
         else:
             res_text = Text(res, style="yellow")
             row_style = ""
-        t.add_row(str(b.get('issue') or '-'), str(b.get('room') or '-'), amt_fmt, res_text, algo)
+        t.add_row(str(b.get('issue') or '-'), str(b.get('room') or '-'), amt_fmt, conf_fmt, risk_fmt, res_text, logic, algo)
     return Panel(t, border_style=(border_color or _rainbow_border_style()))
 
 # -------------------- SETTINGS & START --------------------
@@ -1281,9 +1701,11 @@ def prompt_settings():
     current_bet = base_bet
 
     # Thuật toán cố định
-    console.print("\n[bold]Thuật toán sử dụng:[/] Hyper Adaptive AI (siêu trí tuệ)")
-    console.print("   • Bộ não AI tự học và ưu tiên các phòng có tỉ lệ sống sót cao nhất.")
-    console.print("   • Tự hiệu chỉnh theo kết quả thực tế, không cần lựa chọn thêm.")
+    console.print("\n[bold]Thuật toán sử dụng:[/] Meta Intellect AI (siêu trí tuệ)")
+    console.print("   • Bộ não Meta Intellect học sâu, phân tích xác suất sống sót & rủi ro theo thời gian thực.")
+    console.print("   • Tự hiệu chỉnh vốn và bỏ qua ván nguy hiểm để bảo toàn lợi nhuận.")
+    console.print("   • Tự động skip mọi ván khi độ tin cậy < 60%.")
+    console.print("   • Trình bày logic phân tích ngay trên giao diện.")
     settings["algo"] = ALGO_ID
 
     s = safe_input("Chống soi: sau bao nhiêu ván đặt thì nghỉ 1 ván: ", default="0")
