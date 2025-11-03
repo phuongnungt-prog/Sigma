@@ -2398,6 +2398,7 @@ def prompt_settings():
     # Cyberpunk config header
     from rich.panel import Panel
     from rich.text import Text
+    from rich import box
     
     config_title = Text()
     config_title.append("⚙️  CẤU HÌNH ULTRA AI v15.0", style="bold bright_cyan")
@@ -2422,10 +2423,6 @@ def prompt_settings():
     current_bet = base_bet
 
     # Thuật toán cố định - ULTRA AI v15.0
-    from rich.panel import Panel
-    from rich.text import Text
-    from rich import box
-    
     features = Text()
     features.append("🚀 ULTRA AI v15.0 - SIÊU TRÍ TUỆ VƯỢT TRỘI\n\n", style="bold bright_cyan")
     features.append("🎓 SELF-LEARNING AI\n", style="bright_magenta bold")
