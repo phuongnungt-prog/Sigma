@@ -1,0 +1,66 @@
+═══════════════════════════════════════════════════════════
+✅ ĐÃ FIX LỖI & THÊM TÍNH NĂNG - Version 11.1
+═══════════════════════════════════════════════════════════
+
+🐛 3 LỖI ĐÃ SỬA:
+
+1. STOP-LOSS LOGIC SAI ❌→✅
+   Trước: Dừng khi số dư <= 100
+   Sau:  Dừng khi LỖ >= 100 BUILD
+   
+2. HIỂN THỊ SAI ❌→✅
+   Trước: Thắng mà báo lỗ
+   Sau:  Hiển thị chính xác lãi/lỗ
+   
+3. THIẾU GIẢI THÍCH ❌→✅
+   Trước: Không giải thích tại sao chọn
+   Sau:  Panel riêng giải thích chi tiết
+
+───────────────────────────────────────────────────────────
+
+✨ 2 TÍNH NĂNG MỚI:
+
+1. 💭 PANEL AI REASONING
+   → Hiển thị lý do chọn phòng
+   → Format đẹp với emoji
+   → Cập nhật real-time
+
+2. 📝 PROMPT CẢI THIỆN
+   → Stop-loss giải thích rõ
+   → Ví dụ cụ thể
+   → Message chi tiết
+
+───────────────────────────────────────────────────────────
+
+📊 THỐNG KÊ:
+   
+   Code:    1,967 dòng (+64)
+   Size:    82 KB (+2 KB)
+   Bugs:    3 fixed
+   Features: 2 added
+
+───────────────────────────────────────────────────────────
+
+🚀 SỬ DỤNG:
+
+   python3 toolwsv9.py
+   
+   Khi nhập stop-loss:
+   "Lỗ bao nhiêu BUILD: 100"
+   → Dừng khi lỗ 100 BUILD
+
+───────────────────────────────────────────────────────────
+
+💡 QUAN TRỌNG:
+
+   ĐÚNG: "Lỗ 100 BUILD"
+          = Dừng khi lỗ 100 so với ban đầu
+          
+   SAI:  "Số dư 100"
+          = Không phải stop-loss!
+
+───────────────────────────────────────────────────────────
+
+📄 Đọc thêm: BUGFIX_v11.1.md
+
+🍀 Chúc may mắn!

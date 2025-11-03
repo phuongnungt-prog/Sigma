@@ -122,6 +122,7 @@ room_stats: Dict[int, Dict[str, Any]] = {r: {"kills": 0, "survives": 0, "last_ki
 predicted_room: Optional[int] = None
 last_killed_room: Optional[int] = None
 prediction_locked: bool = False
+ai_reasoning: Optional[str] = None  # Lý do AI chọn phòng
 
 # balances & pnl
 current_build: Optional[float] = None
@@ -861,19 +862,33 @@ class NeuralBrain:
         """Suy luận logic dựa trên quy tắc"""
         logic_rules = []
         
+        room_data = situation.get("room_data", {})
+        recommended = situation.get("recommended_room")
+        
         # Rule 1: Tránh phòng vừa bị kill
         last_kill = situation.get("last_killed_room")
         if last_kill:
-            logic_rules.append(f"Tránh phòng {last_kill} (vừa bị giết)")
+            logic_rules.append(f"❌ Loại phòng {last_kill} (vừa bị sát thủ)")
         
         # Rule 2: Ưu tiên phòng ổn định
-        room_data = situation.get("room_data", {})
-        stable_rooms = [r for r, data in room_data.items() 
-                       if data.get("players", 0) < 20 and data.get("bet", 0) < 5000]
-        if stable_rooms:
-            logic_rules.append(f"Phòng {stable_rooms[0]} ổn định (ít người, ít tiền)")
+        if recommended and recommended in room_data:
+            rec_data = room_data[recommended]
+            players = rec_data.get("players", 0)
+            bet = rec_data.get("bet", 0)
+            
+            if players < 15:
+                logic_rules.append(f"✅ Phòng {recommended} ít người ({players} người)")
+            if bet < 8000:
+                logic_rules.append(f"✅ Phòng {recommended} cược thấp ({bet:,.0f} BUILD)")
+            
+            # Rule 3: So sánh với các phòng khác
+            other_rooms = [r for r in room_data if r != recommended]
+            if other_rooms:
+                avg_players = sum(room_data[r].get("players", 0) for r in other_rooms) / len(other_rooms)
+                if players < avg_players:
+                    logic_rules.append(f"✅ An toàn hơn TB ({players} < {avg_players:.0f} người)")
         
-        return " | ".join(logic_rules) if logic_rules else "Chưa có quy tắc áp dụng"
+        return " • ".join(logic_rules) if logic_rules else "Phân tích dữ liệu cơ bản"
     
     def _plan_strategy(self, situation: Dict[str, Any]) -> str:
         """Lập kế hoạch chiến lược"""
@@ -891,7 +906,10 @@ class NeuralBrain:
         recommended_room = situation.get("recommended_room", 1)
         confidence = self._calculate_confidence(situation)
         
-        return f"Chọn Phòng {recommended_room} (Độ tin cậy: {confidence:.1%})"
+        # Thêm tên phòng
+        room_name = ROOM_NAMES.get(recommended_room, f"Phòng {recommended_room}")
+        
+        return f"Chọn Phòng {recommended_room} - {room_name} (Tin cậy: {confidence:.0%})"
     
     def _calculate_confidence(self, situation: Dict[str, Any]) -> float:
         """Tính toán độ tin cậy của quyết định"""
@@ -991,6 +1009,7 @@ selector = UltimateAISelector(ROOM_ORDER)
 
 def choose_room(mode: str = ALGO_ID) -> Tuple[int, str]:
     """Chọn phòng với Neural Brain AI - AI có não thật sự"""
+    global ai_reasoning
     try:
         # Bước 1: Neural Brain suy nghĩ
         situation = {
@@ -1010,6 +1029,16 @@ def choose_room(mode: str = ALGO_ID) -> Tuple[int, str]:
         thinking_process = neural_brain.think(situation)
         log_debug(f"\n{'='*60}\n{thinking_process}\n{'='*60}")
         
+        # Lưu reasoning để hiển thị trong UI
+        thoughts = neural_brain.get_thoughts()
+        if thoughts and len(thoughts) >= 3:
+            # Lấy 3 dòng quan trọng: Phân tích, Suy luận, Chiến lược
+            ai_reasoning = "\n".join([
+                thoughts[2] if len(thoughts) > 2 else "",  # Phân tích
+                thoughts[3] if len(thoughts) > 3 else "",  # Suy luận
+                thoughts[4] if len(thoughts) > 4 else "",  # Chiến lược
+            ])
+        
         # Bước 4: Strategic Planner lập kế hoạch
         if round_index % 5 == 0:  # Mỗi 5 ván tạo kế hoạch mới
             win_rate = win_streak / max(1, round_index)
@@ -1024,6 +1053,7 @@ def choose_room(mode: str = ALGO_ID) -> Tuple[int, str]:
         return chosen_room, algo
     except Exception as exc:
         log_debug(f"🚨 Neural Brain AI failed: {exc}")
+        ai_reasoning = "Lỗi: Không thể phân tích"
         return ROOM_ORDER[0], ALGO_ID
 
 
@@ -1401,8 +1431,10 @@ def on_message(ws, message):
             def _check_stop_conditions():
                 global stop_flag
                 try:
-                    if stop_when_profit_reached and profit_target is not None and isinstance(current_build, (int, float)) and current_build >= profit_target:
-                        console.print(f"[bold green]🎉 MỤC TIÊU LÃI ĐẠT: {current_build} >= {profit_target}. Dừng tool.[/]")
+                    # FIX: So sánh lãi/lỗ (cumulative_profit) thay vì số dư (current_build)
+                    if stop_when_profit_reached and profit_target is not None and cumulative_profit >= profit_target:
+                        console.print(f"[bold green]🎉 MỤC TIÊU LÃI ĐẠT: {cumulative_profit:+.2f} >= {profit_target}. Dừng tool.[/]")
+                        console.print(f"[green]Số dư hiện tại: {current_build:.2f} BUILD[/]")
                         stop_flag = True
                         try:
                             wsobj = _ws.get("ws")
@@ -1410,8 +1442,11 @@ def on_message(ws, message):
                                 wsobj.close()
                         except Exception:
                             pass
-                    if stop_when_loss_reached and stop_loss_target is not None and isinstance(current_build, (int, float)) and current_build <= stop_loss_target:
-                        console.print(f"[bold red]⚠️ STOP-LOSS TRIGGED: {current_build} <= {stop_loss_target}. Dừng tool.[/]")
+                    
+                    # FIX: So sánh lãi/lỗ (cumulative_profit) thay vì số dư
+                    if stop_when_loss_reached and stop_loss_target is not None and cumulative_profit <= -abs(stop_loss_target):
+                        console.print(f"[bold red]⚠️ STOP-LOSS TRIGGERED: Lỗ {cumulative_profit:.2f} >= {stop_loss_target}. Dừng tool.[/]")
+                        console.print(f"[red]Số dư hiện tại: {current_build:.2f} BUILD (Bắt đầu: {starting_balance:.2f})[/]")
                         stop_flag = True
                         try:
                             wsobj = _ws.get("ws")
@@ -1747,6 +1782,33 @@ def build_mid(border_color: Optional[str] = None):
         txt = "\n".join(lines)
         return Panel(Align.center(Text.from_markup(txt)), title="TRẠNG THÁI", border_style=(border_color or _rainbow_border_style()))
 
+def build_reasoning_panel(border_color: Optional[str] = None):
+    """Panel hiển thị lý do AI chọn phòng"""
+    global ai_reasoning
+    
+    if not ai_reasoning or ai_reasoning == "Lỗi: Không thể phân tích":
+        content = Text("⏳ Đang chờ AI phân tích...", style="dim yellow", justify="center")
+    else:
+        lines = []
+        lines.append("[bold bright_cyan]🧠 TẠI SAO AI CHỌN PHÒNG NÀY?[/]\n")
+        
+        # Hiển thị reasoning với format đẹp
+        reasoning_lines = ai_reasoning.split('\n')
+        for line in reasoning_lines:
+            if line.strip():
+                lines.append(f"[cyan]{line.strip()}[/]")
+        
+        content = Text.from_markup("\n".join(lines))
+    
+    return Panel(
+        Align.center(content),
+        title="[bold bright_magenta]💭 AI REASONING - LÝ DO QUYẾT ĐỊNH 💭[/]",
+        border_style="bright_magenta",
+        box=box.DOUBLE,
+        padding=(1, 2)
+    )
+
+
 def build_bet_table(border_color: Optional[str] = None):
     t = Table(title="Lịch sử cược (5 ván gần nhất)", box=box.SIMPLE, expand=True)
     t.add_column("Ván", no_wrap=True)
@@ -1834,11 +1896,13 @@ def prompt_settings():
         profit_target = None
         stop_when_profit_reached = False
 
-    sl = safe_input("lỗ bao nhiêu thì chốt( không dùng enter): ", default="")
+    sl = safe_input("Lỗ bao nhiêu BUILD thì dừng (ví dụ 100 = dừng khi lỗ 100 BUILD): ", default="")
+    console.print("[dim yellow]💡 Lưu ý: Nhập số lỗ BUILD (ví dụ 100), KHÔNG phải số dư cuối[/]")
     try:
         if sl and sl.strip() != "":
             stop_loss_target = float(sl)
             stop_when_loss_reached = True
+            console.print(f"[yellow]✅ Stop-loss: Tool sẽ dừng khi LỖ {stop_loss_target} BUILD[/]")
         else:
             stop_loss_target = None
             stop_when_loss_reached = False
@@ -1889,10 +1953,10 @@ def main():
     poller.start()
     start_threads()
 
-    with Live(Group(build_header(), build_mid(), build_rooms_table(), build_bet_table()), refresh_per_second=8, console=console, screen=False) as live:
+    with Live(Group(build_header(), build_mid(), build_rooms_table(), build_reasoning_panel(), build_bet_table()), refresh_per_second=8, console=console, screen=False) as live:
         try:
             while not stop_flag:
-                live.update(Group(build_header(), build_mid(), build_rooms_table(), build_bet_table()))
+                live.update(Group(build_header(), build_mid(), build_rooms_table(), build_reasoning_panel(), build_bet_table()))
                 time.sleep(0.12)
             console.print("[bold yellow]Tool đã dừng theo yêu cầu hoặc đạt mục tiêu.[/]")
         except KeyboardInterrupt:
