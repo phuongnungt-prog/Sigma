@@ -283,6 +283,15 @@ def _check_stop_profit_loss():
                 console.print(f"\n[bold green]🎉 MỤC TIÊU LÃI ĐẠT: {cumulative_profit:+.2f} >= {profit_target}[/bold green]")
                 console.print(f"[green]Số dư hiện tại: {current_build:.2f} BUILD (Bắt đầu: {starting_balance:.2f})[/green]")
                 console.print(f"[green]Tổng lãi: +{cumulative_profit:.2f} BUILD ✅[/green]")
+                
+                # 💾 LƯU BỘ NHỚ AI TRƯỚC KHI DỪNG!
+                try:
+                    if selector._learning_enabled:
+                        selector._self_learning_ai.save_brain()
+                        console.print("[cyan]💾 AI Brain saved![/cyan]")
+                except Exception:
+                    pass
+                
                 stop_flag = True
                 try:
                     wsobj = _ws.get("ws")
@@ -297,6 +306,15 @@ def _check_stop_profit_loss():
                 console.print(f"\n[bold red]⚠️ STOP-LOSS TRIGGERED: Lỗ {cumulative_profit:.2f} >= {stop_loss_target}[/bold red]")
                 console.print(f"[red]Số dư hiện tại: {current_build:.2f} BUILD (Bắt đầu: {starting_balance:.2f})[/red]")
                 console.print(f"[red]Tổng lỗ: {cumulative_profit:.2f} BUILD ❌[/red]")
+                
+                # 💾 LƯU BỘ NHỚ AI TRƯỚC KHI DỪNG!
+                try:
+                    if selector._learning_enabled:
+                        selector._self_learning_ai.save_brain()
+                        console.print("[cyan]💾 AI Brain saved![/cyan]")
+                except Exception:
+                    pass
+                
                 stop_flag = True
                 try:
                     wsobj = _ws.get("ws")
@@ -580,6 +598,14 @@ class UltimateAISelector:
             from self_learning_ai import SelfLearningAI
             self._self_learning_ai = SelfLearningAI()
             self._learning_enabled = True
+            
+            # 💾 TỰ ĐỘNG LOAD BỘ NHỚ ĐÃ HỌC!
+            if self._self_learning_ai.load_brain():
+                log_debug(f"🧠 Loaded AI Brain! Total rounds learned: {self._self_learning_ai.total_rounds}")
+                log_debug(f"📊 Accuracy: {self._self_learning_ai.online_learner.get_accuracy():.1%}")
+            else:
+                log_debug("🆕 Starting fresh - no previous brain data")
+            
             log_debug("✅ Self-Learning AI initialized!")
         except Exception as e:
             self._learning_enabled = False
@@ -1101,6 +1127,11 @@ class UltimateAISelector:
                         killed_room=killed_room,
                         room_data=room_data
                     )
+                    
+                    # 💾 AUTO-SAVE mỗi 5 ván để lưu tiến trình học!
+                    if self._self_learning_ai.total_rounds % 5 == 0:
+                        if self._self_learning_ai.save_brain():
+                            log_debug(f"💾 Brain saved! ({self._self_learning_ai.total_rounds} rounds)")
                     
                     # Log insights mỗi 10 ván
                     if self._self_learning_ai.total_rounds % 10 == 0:
@@ -2699,6 +2730,15 @@ def main():
             console.print("[bold yellow]Tool đã dừng theo yêu cầu hoặc đạt mục tiêu.[/bold yellow]")
         except KeyboardInterrupt:
             console.print("[yellow]Thoát bằng người dùng.[/yellow]")
+        finally:
+            # 💾 SAVE BRAIN KHI THOÁT!
+            try:
+                if selector._learning_enabled:
+                    selector._self_learning_ai.save_brain()
+                    console.print("[cyan]💾 AI Brain saved before exit![/cyan]")
+            except Exception as e:
+                console.print(f"[dim yellow]⚠️ Could not save brain: {e}[/dim yellow]")
+            
             poller.stop()
 
 if __name__ == "__main__":

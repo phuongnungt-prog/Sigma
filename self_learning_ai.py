@@ -545,3 +545,134 @@ class SelfLearningAI:
         insights.append(self.memory_learner.get_insights())
         
         return "\n".join(insights)
+    
+    def save_brain(self, filepath: str = "ai_brain_memory.json"):
+        """
+        ?? L?U B? N?O AI
+        Luu t?t c? ki?n th?c ?? h?c vao file
+        """
+        from datetime import datetime
+        
+        brain_data = {
+            "metadata": {
+                "version": "15.0",
+                "last_updated": datetime.now().isoformat(),
+                "total_rounds": self.total_rounds,
+                "accuracy": self.online_learner.get_accuracy()
+            },
+            
+            # Online Learner Data
+            "online_learner": {
+                "feature_weights": self.online_learner.feature_weights,
+                "learning_rate": self.online_learner.learning_rate,
+                "round_count": self.online_learner.round_count,
+                "correct_predictions": self.online_learner.correct_predictions,
+                "experiences": list(self.online_learner.experiences)
+            },
+            
+            # Pattern Learner Data
+            "pattern_learner": {
+                "kill_sequences": {
+                    str(k): v for k, v in self.pattern_learner.kill_sequences.items()
+                },
+                "time_patterns": dict(self.pattern_learner.time_patterns)
+            },
+            
+            # Adaptive Strategy Data
+            "adaptive_strategy": {
+                "strategies": self.adaptive_strategy.strategies,
+                "current_strategy": self.adaptive_strategy.current_strategy,
+                "rounds_since_change": self.adaptive_strategy.rounds_since_change
+            },
+            
+            # Memory Learner Data
+            "memory_learner": {
+                "good_situations": list(self.memory_learner.good_situations),
+                "bad_situations": list(self.memory_learner.bad_situations),
+                "room_history": {
+                    str(k): v for k, v in self.memory_learner.room_history.items()
+                }
+            },
+            
+            # Global State
+            "last_killed_room": self.last_killed_room
+        }
+        
+        try:
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(brain_data, f, indent=2, ensure_ascii=False)
+            return True
+        except Exception as e:
+            print(f"? Error saving brain: {e}")
+            return False
+    
+    def load_brain(self, filepath: str = "ai_brain_memory.json") -> bool:
+        """
+        ?? T?I B? N?O AI
+        T?i l?i ki?n th?c ?? h?c t? file
+        """
+        import os
+        
+        if not os.path.exists(filepath):
+            return False
+        
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                brain_data = json.load(f)
+            
+            # Load metadata
+            self.total_rounds = brain_data["metadata"]["total_rounds"]
+            
+            # Load Online Learner
+            ol_data = brain_data["online_learner"]
+            self.online_learner.feature_weights = ol_data["feature_weights"]
+            self.online_learner.learning_rate = ol_data["learning_rate"]
+            self.online_learner.round_count = ol_data["round_count"]
+            self.online_learner.correct_predictions = ol_data["correct_predictions"]
+            self.online_learner.experiences = deque(ol_data["experiences"], maxlen=500)
+            
+            # Load Pattern Learner
+            pl_data = brain_data["pattern_learner"]
+            self.pattern_learner.kill_sequences = defaultdict(
+                lambda: {"count": 0, "total": 0},
+                {eval(k): v for k, v in pl_data["kill_sequences"].items()}
+            )
+            self.pattern_learner.time_patterns = defaultdict(
+                list,
+                pl_data["time_patterns"]
+            )
+            
+            # Load Adaptive Strategy
+            as_data = brain_data["adaptive_strategy"]
+            self.adaptive_strategy.strategies = as_data["strategies"]
+            self.adaptive_strategy.current_strategy = as_data["current_strategy"]
+            self.adaptive_strategy.rounds_since_change = as_data["rounds_since_change"]
+            
+            # Load Memory Learner
+            ml_data = brain_data["memory_learner"]
+            self.memory_learner.good_situations = deque(ml_data["good_situations"], maxlen=100)
+            self.memory_learner.bad_situations = deque(ml_data["bad_situations"], maxlen=100)
+            
+            # Load room history
+            room_hist = {}
+            for room_str, hist in ml_data["room_history"].items():
+                room_hist[int(room_str)] = hist
+            self.memory_learner.room_history = defaultdict(
+                lambda: {
+                    "total_rounds": 0,
+                    "survived": 0,
+                    "killed": 0,
+                    "avg_players": [],
+                    "avg_bet": []
+                },
+                room_hist
+            )
+            
+            # Load global state
+            self.last_killed_room = brain_data.get("last_killed_room")
+            
+            return True
+            
+        except Exception as e:
+            print(f"? Error loading brain: {e}")
+            return False
