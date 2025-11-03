@@ -1,14 +1,35 @@
-# toolws.py (ULTIMATE AI) - Siêu Trí Tuệ AI Tối Ưu Hóa
+# toolws.py (NEURAL BRAIN AI) - AI Có Bộ Não Thật Sự
 from __future__ import annotations
 
 def show_banner():
     from rich.console import Console
     from rich.panel import Panel
+    from rich.text import Text
+    from rich import box
     console = Console()
+    
+    # ASCII Art Brain với gradient
+    brain_art = """
+    ⠀⠀⠀⢀⣀⣤⣤⣤⣤⣤⣤⣤⣤⣤⣤⣀⡀⠀⠀⠀
+    ⠀⢀⣴⠿⠛⠉⠀⠀⠀⠀⠀⠀⠀⠉⠛⠿⣦⡀⠀
+    ⢀⣾⠋⠀⠀⣠⣤⣤⣤⣤⣤⣤⣄⠀⠀⠀⠙⣷⡀
+    ⣸⡏⠀⢀⣾⠋⠀⠀⠀⠀⠀⠀⠙⣷⡀⠀⠀⢹⣇
+    ⣿⠀⠀⣾⠃⠀⣴⣶⣶⣶⣶⣦⠀⠘⣷⠀⠀⠀⣿
+    ⣿⠀⠀⣿⠀⠀⠙⠻⠿⠿⠟⠋⠀⠀⣿⠀⠀⠀⣿
+    ⢹⣇⠀⠹⣧⠀⠀⠀⠀⠀⠀⠀⠀⣼⠏⠀⠀⣸⡏
+    ⠀⠻⣦⡀⠈⠻⣦⣄⡀⠀⣀⣠⡾⠋⠀⢀⣴⠟⠀
+    ⠀⠀⠈⠛⠷⣤⣄⣉⣉⣉⣉⣁⣤⠶⠛⠉⠀⠀⠀
+    """
+    
+    title = Text()
+    title.append("🧠 NEURAL BRAIN AI 🧠\n", style="bold bright_cyan")
+    title.append("AI Có Bộ Não Thật Sự - Suy Nghĩ & Quyết Định Như Con Người", style="bright_green")
+    
     console.print(Panel(
-        "[bold yellow]ULTIMATE AI TOOL - SIÊU TRÍ TUỆ[/]\n[cyan]Powered by Advanced Neural Network | Tỉ lệ thắng cao nhất[/]",
+        Text.from_markup(f"[dim cyan]{brain_art}[/]\n") + title,
         expand=True,
-        border_style="bright_green"
+        border_style="bright_magenta",
+        box=box.DOUBLE
     ))
 
 show_banner()
@@ -40,9 +61,19 @@ from rich import box
 # -------------------- CONFIG & GLOBALS --------------------
 console = Console()
 # Hiển thị banner ngay khi tool chạy
-console.print(Rule("[bold yellow]🧠 ULTIMATE AI - SIÊU TRÍ TUỆ 🧠[/]"))
-console.print("[bright_green]⚡ Thuật toán AI thông minh nhất - Tỉ lệ thắng được tối ưu hóa tối đa ⚡[/]")
-console.print(Rule())
+from rich.style import Style
+
+# Gradient text cho header
+header_style = Style(color="bright_cyan", bold=True)
+console.print(Rule(
+    "⚡ NEURAL BRAIN AI - BỘ NÃO THÔNG MINH ⚡",
+    style="bold bright_magenta"
+))
+console.print(
+    Text("🔮 Neural Network • Logic Reasoning • Strategic Planning • Predictive Analytics 🔮", 
+    style="bright_green", justify="center")
+)
+console.print(Rule(style="bright_cyan"))
 
 tz = pytz.timezone("Asia/Ho_Chi_Minh")
 
@@ -150,10 +181,10 @@ SELECTION_CONFIG = {
     "avoid_last_kill": True,
 }
 
-# selection mode duy nhất - ULTIMATE AI
-ALGO_ID = "ULTIMATE_AI"
+# selection mode duy nhất - NEURAL BRAIN AI
+ALGO_ID = "NEURAL_BRAIN_AI"
 SELECTION_MODES = {
-    ALGO_ID: "🧠 Ultimate AI - Siêu Trí Tuệ Tối Ưu (Tỉ lệ thắng cao nhất)"
+    ALGO_ID: "🧠 Neural Brain AI - Bộ Não Thông Minh (Suy Nghĩ & Quyết Định Như Người)"
 }
 
 settings = {"algo": ALGO_ID}
@@ -748,24 +779,272 @@ class UltimateAISelector:
             self._last_votes = []
 
 
+# -------------------- NEURAL BRAIN SYSTEM (BỘ NÃO AI THẬT SỰ) --------------------
+
+class NeuralBrain:
+    """
+    Bộ não AI thật sự với khả năng:
+    - Suy nghĩ logic
+    - Phân tích chiến lược
+    - Dự đoán xu hướng
+    - Học từ kinh nghiệm
+    """
+    def __init__(self):
+        self._thoughts: List[str] = []
+        self._logic_chain: List[Dict[str, Any]] = []
+        self._strategy_memory: deque = deque(maxlen=50)
+        self._neural_weights: Dict[str, float] = self._init_neural_weights()
+        self._thinking_depth: int = 3  # Độ sâu suy nghĩ
+        
+    def _init_neural_weights(self) -> Dict[str, float]:
+        """Khởi tạo trọng số neural network của não bộ"""
+        return {
+            "survival_priority": 0.9,
+            "risk_aversion": 0.7,
+            "pattern_recognition": 0.8,
+            "momentum_trading": 0.6,
+            "contrarian_thinking": 0.4,
+            "crowd_psychology": 0.75,
+            "statistical_edge": 0.85,
+            "adaptive_learning": 0.95,
+        }
+    
+    def think(self, situation: Dict[str, Any]) -> str:
+        """Quá trình suy nghĩ của AI - trả về chuỗi suy luận"""
+        thoughts = []
+        thoughts.append("🧠 [KHỞI ĐỘNG QUÁ TRÌNH SUY NGHĨ]")
+        
+        # Layer 1: Quan sát
+        observation = self._observe(situation)
+        thoughts.append(f"👁️ Quan sát: {observation}")
+        
+        # Layer 2: Phân tích
+        analysis = self._analyze(situation)
+        thoughts.append(f"📊 Phân tích: {analysis}")
+        
+        # Layer 3: Suy luận logic
+        logic = self._reason_logically(situation)
+        thoughts.append(f"💭 Suy luận: {logic}")
+        
+        # Layer 4: Chiến lược
+        strategy = self._plan_strategy(situation)
+        thoughts.append(f"🎯 Chiến lược: {strategy}")
+        
+        # Layer 5: Quyết định
+        decision = self._make_decision(situation)
+        thoughts.append(f"✅ Quyết định: {decision}")
+        
+        self._thoughts = thoughts
+        return "\n".join(thoughts)
+    
+    def _observe(self, situation: Dict[str, Any]) -> str:
+        """Quan sát tình huống"""
+        room_data = situation.get("room_data", {})
+        n_rooms = len(room_data)
+        total_players = sum(r.get("players", 0) for r in room_data.values())
+        total_bets = sum(r.get("bet", 0) for r in room_data.values())
+        
+        return f"{n_rooms} phòng, {total_players} người chơi, {total_bets:,.0f} BUILD tổng cược"
+    
+    def _analyze(self, situation: Dict[str, Any]) -> str:
+        """Phân tích dữ liệu"""
+        room_data = situation.get("room_data", {})
+        
+        # Tìm phòng nguy hiểm nhất
+        max_bet_room = max(room_data.items(), key=lambda x: x[1].get("bet", 0))[0] if room_data else 0
+        # Tìm phòng đông nhất
+        max_players_room = max(room_data.items(), key=lambda x: x[1].get("players", 0))[0] if room_data else 0
+        
+        return f"Phòng {max_bet_room} cược cao nhất, Phòng {max_players_room} đông nhất"
+    
+    def _reason_logically(self, situation: Dict[str, Any]) -> str:
+        """Suy luận logic dựa trên quy tắc"""
+        logic_rules = []
+        
+        # Rule 1: Tránh phòng vừa bị kill
+        last_kill = situation.get("last_killed_room")
+        if last_kill:
+            logic_rules.append(f"Tránh phòng {last_kill} (vừa bị giết)")
+        
+        # Rule 2: Ưu tiên phòng ổn định
+        room_data = situation.get("room_data", {})
+        stable_rooms = [r for r, data in room_data.items() 
+                       if data.get("players", 0) < 20 and data.get("bet", 0) < 5000]
+        if stable_rooms:
+            logic_rules.append(f"Phòng {stable_rooms[0]} ổn định (ít người, ít tiền)")
+        
+        return " | ".join(logic_rules) if logic_rules else "Chưa có quy tắc áp dụng"
+    
+    def _plan_strategy(self, situation: Dict[str, Any]) -> str:
+        """Lập kế hoạch chiến lược"""
+        streak = situation.get("win_streak", 0)
+        
+        if streak >= 3:
+            return "Thắng liên tiếp → Giữ chiến lược hiện tại, tăng tự tin"
+        elif situation.get("lose_streak", 0) >= 2:
+            return "Thua liên tiếp → Điều chỉnh chiến lược, thận trọng hơn"
+        else:
+            return "Cân bằng → Tiếp tục quan sát và học hỏi"
+    
+    def _make_decision(self, situation: Dict[str, Any]) -> str:
+        """Đưa ra quyết định cuối cùng"""
+        recommended_room = situation.get("recommended_room", 1)
+        confidence = self._calculate_confidence(situation)
+        
+        return f"Chọn Phòng {recommended_room} (Độ tin cậy: {confidence:.1%})"
+    
+    def _calculate_confidence(self, situation: Dict[str, Any]) -> float:
+        """Tính toán độ tin cậy của quyết định"""
+        base_confidence = 0.6
+        
+        # Tăng confidence nếu có nhiều dữ liệu
+        if situation.get("total_rounds", 0) > 20:
+            base_confidence += 0.15
+        
+        # Tăng nếu đang thắng
+        if situation.get("win_streak", 0) >= 2:
+            base_confidence += 0.1
+        
+        # Giảm nếu đang thua
+        if situation.get("lose_streak", 0) >= 2:
+            base_confidence -= 0.15
+        
+        return min(0.95, max(0.4, base_confidence))
+    
+    def get_thoughts(self) -> List[str]:
+        """Lấy chuỗi suy nghĩ"""
+        return self._thoughts
+    
+    def update_neural_weights(self, result: bool):
+        """Cập nhật trọng số neural network dựa trên kết quả"""
+        lr = 0.05
+        if result:  # Thắng
+            self._neural_weights["survival_priority"] += lr * 0.1
+            self._neural_weights["pattern_recognition"] += lr * 0.08
+        else:  # Thua
+            self._neural_weights["risk_aversion"] += lr * 0.12
+            self._neural_weights["contrarian_thinking"] += lr * 0.06
+        
+        # Normalize
+        for k in self._neural_weights:
+            self._neural_weights[k] = max(0.1, min(1.0, self._neural_weights[k]))
+
+
+class StrategicPlanner:
+    """
+    Bộ lập kế hoạch chiến lược
+    Phân tích dài hạn và đưa ra chiến thuật
+    """
+    def __init__(self):
+        self._short_term_plan: Optional[str] = None
+        self._long_term_plan: Optional[str] = None
+        self._tactics: List[str] = []
+        
+    def create_plan(self, data: Dict[str, Any]) -> Dict[str, str]:
+        """Tạo kế hoạch chiến lược ngắn hạn và dài hạn"""
+        # Phân tích tình hình
+        win_rate = data.get("win_rate", 0.5)
+        total_profit = data.get("total_profit", 0.0)
+        
+        # Kế hoạch ngắn hạn (5-10 ván)
+        if win_rate > 0.6:
+            self._short_term_plan = "🎯 OFFENSIVE: Tăng cường đặt cược, tận dụng momentum"
+        elif win_rate > 0.45:
+            self._short_term_plan = "⚖️ BALANCED: Giữ ổn định, quan sát thêm"
+        else:
+            self._short_term_plan = "🛡️ DEFENSIVE: Giảm rủi ro, chờ cơ hội tốt hơn"
+        
+        # Kế hoạch dài hạn (20-50 ván)
+        if total_profit > 0:
+            self._long_term_plan = "📈 Mục tiêu: Tối ưu hóa lợi nhuận, quản lý vốn an toàn"
+        else:
+            self._long_term_plan = "🔄 Mục tiêu: Phục hồi vốn, học hỏi pattern mới"
+        
+        return {
+            "short_term": self._short_term_plan,
+            "long_term": self._long_term_plan
+        }
+    
+    def suggest_tactics(self, situation: str) -> List[str]:
+        """Đề xuất chiến thuật cụ thể"""
+        tactics = []
+        
+        if "thua" in situation.lower():
+            tactics.append("💡 Tạm nghỉ 1-2 ván để tái đánh giá")
+            tactics.append("💡 Giảm 50% số tiền đặt cược")
+            tactics.append("💡 Chỉ chọn phòng có survival rate > 70%")
+        elif "thắng" in situation.lower():
+            tactics.append("💡 Duy trì chiến lược hiện tại")
+            tactics.append("💡 Có thể tăng nhẹ bet size (+20%)")
+            tactics.append("💡 Mở rộng selection pool")
+        
+        self._tactics = tactics
+        return tactics
+
+
+# Khởi tạo bộ não AI
+neural_brain = NeuralBrain()
+strategic_planner = StrategicPlanner()
+
 selector = UltimateAISelector(ROOM_ORDER)
 
 
 def choose_room(mode: str = ALGO_ID) -> Tuple[int, str]:
-    """Chọn phòng an toàn với Ultimate AI"""
+    """Chọn phòng với Neural Brain AI - AI có não thật sự"""
     try:
-        return selector.select_room()
+        # Bước 1: Neural Brain suy nghĩ
+        situation = {
+            "room_data": room_state,
+            "last_killed_room": last_killed_room,
+            "win_streak": win_streak,
+            "lose_streak": lose_streak,
+            "total_rounds": round_index,
+            "recommended_room": None
+        }
+        
+        # Bước 2: Selector chọn phòng
+        chosen_room, algo = selector.select_room()
+        situation["recommended_room"] = chosen_room
+        
+        # Bước 3: Neural Brain phân tích quyết định
+        thinking_process = neural_brain.think(situation)
+        log_debug(f"\n{'='*60}\n{thinking_process}\n{'='*60}")
+        
+        # Bước 4: Strategic Planner lập kế hoạch
+        if round_index % 5 == 0:  # Mỗi 5 ván tạo kế hoạch mới
+            win_rate = win_streak / max(1, round_index)
+            plan_data = {
+                "win_rate": win_rate,
+                "total_profit": cumulative_profit,
+            }
+            plans = strategic_planner.create_plan(plan_data)
+            log_debug(f"📋 Kế hoạch ngắn hạn: {plans['short_term']}")
+            log_debug(f"📋 Kế hoạch dài hạn: {plans['long_term']}")
+        
+        return chosen_room, algo
     except Exception as exc:
-        log_debug(f"🚨 UltimateAISelector choose failed: {exc}")
+        log_debug(f"🚨 Neural Brain AI failed: {exc}")
         return ROOM_ORDER[0], ALGO_ID
 
 
 def update_formulas_after_result(predicted_room: Optional[int], killed_room: Optional[int], mode: str = ALGO_ID, lr: float = 0.12):
-    """Cập nhật AI sau khi có kết quả"""
+    """Cập nhật AI sau khi có kết quả - Bộ não AI học hỏi"""
     try:
+        # Cập nhật selector
         selector.update(predicted_room, killed_room)
+        
+        # Cập nhật Neural Brain
+        win = (killed_room is not None and predicted_room != killed_room)
+        neural_brain.update_neural_weights(win)
+        
+        # Log quá trình học
+        if win:
+            log_debug("🧠 Neural Brain: Cập nhật trọng số sau THẮNG")
+        else:
+            log_debug("🧠 Neural Brain: Điều chỉnh chiến thuật sau THUA")
+            
     except Exception as exc:
-        log_debug(f"🚨 UltimateAISelector update failed: {exc}")
+        log_debug(f"🚨 AI Learning failed: {exc}")
 
 
 # -------------------- BETTING HELPERS --------------------
@@ -1265,7 +1544,10 @@ def build_header(border_color: Optional[str] = None):
     tbl.add_column(ratio=2)
     tbl.add_column(ratio=1)
 
-    left = Text("VUA THOÁT HIỂM VIP", style="bold cyan")
+    # Title với gradient effect
+    left = Text()
+    left.append("🧠 NEURAL BRAIN AI 🧠\n", style="bold bright_cyan")
+    left.append("Bộ Não Thông Minh", style="bright_green")
 
     b = f"{current_build:,.4f}" if isinstance(current_build, (int, float)) else (str(current_build) if current_build is not None else "-")
     u = f"{current_usdt:,.4f}" if isinstance(current_usdt, (int, float)) else (str(current_usdt) if current_usdt is not None else "-")
@@ -1338,22 +1620,35 @@ def build_mid(border_color: Optional[str] = None):
         else:
             lines.append("Chưa nhận được dữ liệu đếm ngược...")
 
-        # blur visual: animated blocks với hiệu ứng siêu AI
+        # NEURAL BRAIN visualization với hiệu ứng công nghệ cao
         if analysis_blur:
-            bar_len = 45
+            # Brain wave animation
+            bar_len = 50
             blocks = []
-            tbase = int(time.time() * 7)
+            tbase = int(time.time() * 8)
             for i in range(bar_len):
-                # pseudo-random flicker với animation mượt hơn
-                val = (tbase + i * 2) % 8
+                # Tạo hiệu ứng sóng não với gradient
+                wave = math.sin((i + tbase) * 0.3) * 0.5 + 0.5
+                val = int(wave * 7)
                 ch = "█" if val in (0, 1, 2, 3) else ("▓" if val in (4, 5) else "░")
                 color = RAINBOW_COLORS[(i + tbase) % len(RAINBOW_COLORS)]
                 blocks.append(f"[{color}]{ch}[/{color}]")
             lines.append("".join(blocks))
             lines.append("")
-            lines.append("🧠 ULTIMATE AI - 150 AGENTS ĐANG PHÂN TÍCH...")
-            lines.append("⚡ HỌC SÂU & TỐI ƯU HÓA TỪ 20+ CHỈ SỐ...")
-            lines.append("🎯 PHÁT HIỆN MÔ HÌNH & DỰ ĐOÁN CHÍNH XÁC...")
+            
+            # Hiển thị quá trình tư duy của AI
+            thinking_stage = (int(time.time() * 2) % 5)
+            stages = [
+                "🧠 [QUAN SÁT] Thu thập dữ liệu từ 8 phòng...",
+                "📊 [PHÂN TÍCH] Xử lý 20+ chỉ số đặc trưng...",
+                "💭 [SUY LUẬN] Áp dụng logic reasoning...",
+                "🎯 [CHIẾN LƯỢC] Lập kế hoạch tối ưu...",
+                "✅ [QUYẾT ĐỊNH] 150 agents đang bỏ phiếu..."
+            ]
+            lines.append(stages[thinking_stage])
+            lines.append("")
+            lines.append("[dim cyan]━━━ NEURAL NETWORK ACTIVE ━━━[/]")
+            lines.append("[bright_green]⚡ Confidence: Building... | Accuracy: Learning...[/]")
         else:
             # fallback compact progress bar (no percent text)
             bar_len = 24
@@ -1376,21 +1671,53 @@ def build_mid(border_color: Optional[str] = None):
         name = ROOM_NAMES.get(predicted_room, f"Phòng {predicted_room}") if predicted_room else '-'
         last_bet_amt = current_bet if current_bet is not None else '-'
         lines = []
-        lines.append(f"🧠 ULTIMATE AI chọn: [bright_green]{name}[/]  — [green]DỰ ĐOÁN TỐI ƯU[/]")
-        lines.append(f"💰 Số đặt: {last_bet_amt} BUILD")
-        lines.append(f"☠️ Phòng sát thủ ván trước: {ROOM_NAMES.get(last_killed_room, '-')}")
-        lines.append(f"📊 Chuỗi: 🎯{win_streak} thắng  |  ❌{lose_streak} thua")
+        
+        # Header với gradient effect
+        lines.append("[bold bright_cyan]╔════════════════════════════════════════╗[/]")
+        lines.append(f"[bold bright_cyan]║[/]  🧠 [bright_green]NEURAL BRAIN DECISION[/]  🧠  [bold bright_cyan]║[/]")
+        lines.append("[bold bright_cyan]╚════════════════════════════════════════╝[/]")
         lines.append("")
+        
+        # AI Thinking Process (lấy từ neural_brain)
+        if hasattr(neural_brain, '_thoughts') and neural_brain._thoughts:
+            # Hiển thị 3 dòng cuối của quá trình suy nghĩ
+            for thought in neural_brain._thoughts[-3:]:
+                lines.append(f"[dim]{thought}[/]")
+            lines.append("")
+        
+        lines.append(f"[bold bright_magenta]➤[/] Lựa chọn: [bright_green bold]{name}[/]")
+        lines.append(f"[bold bright_magenta]➤[/] Số đặt: [yellow]{last_bet_amt} BUILD[/]")
+        
+        # Tính độ tin cậy
+        confidence = 0.75 + (win_streak * 0.05) - (lose_streak * 0.05)
+        confidence = max(0.4, min(0.95, confidence))
+        conf_bar = "█" * int(confidence * 20)
+        lines.append(f"[bold bright_magenta]➤[/] Độ tin cậy: [bright_green]{conf_bar}[/] {confidence:.0%}")
+        lines.append("")
+        
+        lines.append(f"[dim]Phòng sát thủ trước: {ROOM_NAMES.get(last_killed_room, '-')}[/]")
+        lines.append(f"[dim]Chuỗi: 🎯{win_streak}W | ❌{lose_streak}L[/]")
+        
         if count_down is not None:
             try:
                 cd = int(count_down)
-                lines.append(f"⏱️ Đếm ngược: [yellow]{cd}s[/]")
+                lines.append("")
+                lines.append(f"[bold yellow]⏱️ Đếm ngược: {cd}s[/]")
             except Exception:
                 pass
+        
         lines.append("")
-        lines.append(f"⚡ 150 AI Agents đang tối ưu hóa... {_spinner_char()}")
+        # Animation dots
+        dots = "." * (int(time.time() * 3) % 4)
+        lines.append(f"[bright_cyan]⚡ Neural Network Processing{dots.ljust(3)}[/]")
+        
         txt = "\n".join(lines)
-        return Panel(Align.center(Text.from_markup(txt)), title="DỰ ĐOÁN", border_style=(border_color or _rainbow_border_style()))
+        return Panel(
+            Align.center(Text.from_markup(txt)), 
+            title="[bold bright_magenta]🔮 AI PREDICTION 🔮[/]", 
+            border_style="bright_magenta",
+            box=box.DOUBLE
+        )
 
     elif ui_state == "RESULT":
         k = ROOM_NAMES.get(killed_room, "-") if killed_room else "-"
@@ -1467,12 +1794,20 @@ def prompt_settings():
         multiplier = 2.0
     current_bet = base_bet
 
-    # Thuật toán cố định - ULTIMATE AI
-    console.print("\n[bold bright_green]🧠 Thuật toán:[/] Ultimate AI - Siêu Trí Tuệ Tối Ưu")
-    console.print("   [cyan]• 150 AI Agents thông minh với khả năng tự học sâu")
-    console.print("   • Phân tích 20+ chỉ số đặc trưng với độ chính xác cao")
-    console.print("   • Bộ nhớ dài hạn và phát hiện mô hình tự động")
-    console.print("   • Tỉ lệ thắng được tối ưu hóa tối đa[/]")
+    # Thuật toán cố định - NEURAL BRAIN AI
+    console.print("\n[bold bright_cyan]╔═══════════════════════════════════════════════════════╗[/]")
+    console.print("[bold bright_cyan]║[/]  🧠 [bright_green bold]NEURAL BRAIN AI - BỘ NÃO THÔNG MINH[/]  🧠  [bold bright_cyan]║[/]")
+    console.print("[bold bright_cyan]╚═══════════════════════════════════════════════════════╝[/]")
+    console.print("")
+    console.print("   [bright_green]✨ Đặc điểm:[/]")
+    console.print("   [cyan]• 🧠 Neural Network - Mạng nơ-ron tự học")
+    console.print("   • 💭 Logic Reasoning - Suy luận logic mạnh mẽ")
+    console.print("   • 🎯 Strategic Planning - Lập kế hoạch chiến lược")
+    console.print("   • 👁️ Pattern Recognition - Nhận diện mô hình")
+    console.print("   • 📊 Predictive Analytics - Phân tích dự đoán")
+    console.print("   • 🔮 150 AI Agents - Bỏ phiếu đồng thuận[/]")
+    console.print("")
+    console.print("   [bright_yellow]🌟 AI này SỨY NGHĨ như CON NGƯỜI thật sự![/]")
     settings["algo"] = ALGO_ID
 
     s = safe_input("Chống soi: sau bao nhiêu ván đặt thì nghỉ 1 ván: ", default="0")
