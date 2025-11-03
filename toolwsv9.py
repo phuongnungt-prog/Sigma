@@ -2244,13 +2244,19 @@ def prompt_settings():
     global pause_after_losses, profit_target, stop_when_profit_reached
     global stop_loss_target, stop_when_loss_reached, settings
 
-    console.print(Rule("[bold cyan]CẤU HÌNH NHANH[/bold cyan]"))
-    base = safe_input("Số BUILD đặt mỗi ván: ", default="1")
+    # Cyberpunk config header
+    console.print("╔═══════════════════════════════════════════════════════════╗", style="bright_cyan")
+    console.print("║  ⚙️  CẤU HÌNH QUANTUM BRAIN AI                            ║", style="bright_cyan")
+    console.print("╚═══════════════════════════════════════════════════════════╝", style="bright_cyan")
+    console.print(Align.center(Text("◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤", style="dim bright_magenta")))
+    console.print("")
+    
+    base = safe_input("[bold bright_cyan]💰 Số BUILD đặt mỗi ván:[/bold bright_cyan] ", default="1")
     try:
         base_bet = float(base)
     except Exception:
         base_bet = 1.0
-    m = safe_input("Nhập 1 số nhân sau khi thua (ổn định thì 2): ", default="2")
+    m = safe_input("[bold bright_cyan]📈 Hệ số nhân sau khi thua (ổn định = 2):[/bold bright_cyan] ", default="2")
     try:
         multiplier = float(m)
     except Exception:
@@ -2274,7 +2280,7 @@ def prompt_settings():
     console.print("   [dim bright_cyan]◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤[/dim bright_cyan]")
     settings["algo"] = ALGO_ID
 
-    s = safe_input("Chống soi: sau bao nhiêu ván đặt thì nghỉ 1 ván: ", default="0")
+    s = safe_input("[bold bright_cyan]🛡️  Chống soi (số ván đặt trước khi nghỉ 1 ván):[/bold bright_cyan] ", default="0")
     try:
         bet_rounds_before_skip = int(s)
     except Exception:
@@ -2320,28 +2326,174 @@ def start_threads():
     threading.Thread(target=start_ws, daemon=True).start()
     threading.Thread(target=monitor_loop, daemon=True).start()
 
+def show_cyberpunk_login():
+    """
+    ⚡ CYBERPUNK LOGIN SCREEN ⚡
+    """
+    from rich.table import Table
+    from rich import box
+    
+    console.print("\n" * 2)
+    
+    # ASCII Art Login
+    login_art = """
+    ╔═══════════════════════════════════════════════════════════╗
+    ║                                                           ║
+    ║    ██████╗ ██╗   ██╗ █████╗ ███╗   ██╗████████╗██╗   ██╗ ║
+    ║   ██╔═══██╗██║   ██║██╔══██╗████╗  ██║╚══██╔══╝██║   ██║ ║
+    ║   ██║   ██║██║   ██║███████║██╔██╗ ██║   ██║   ██║   ██║ ║
+    ║   ██║▄▄ ██║██║   ██║██╔══██║██║╚██╗██║   ██║   ██║   ██║ ║
+    ║   ╚██████╔╝╚██████╔╝██║  ██║██║ ╚████║   ██║   ╚██████╔╝ ║
+    ║    ╚══▀▀═╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝    ╚═════╝  ║
+    ║                                                           ║
+    ║              ⚡ LOGIN SYSTEM v14.0 ⚡                      ║
+    ║                                                           ║
+    ╚═══════════════════════════════════════════════════════════╝
+    """
+    
+    console.print(Text(login_art, style="bright_cyan"))
+    console.print(Align.center(
+        Text("◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤", style="dim bright_magenta")
+    ))
+    console.print("")
+    
+    # Info table
+    info_table = Table(box=box.ROUNDED, border_style="bright_cyan", show_header=False)
+    info_table.add_column("", style="bright_yellow bold", no_wrap=True)
+    info_table.add_column("", style="bright_green")
+    
+    info_table.add_row("🔐 Security", "Base64 Encryption")
+    info_table.add_row("💾 Storage", "Local Encrypted Config")
+    info_table.add_row("🔗 Protocol", "HTTPS + WebSocket Secure")
+    info_table.add_row("⚡ Version", "Quantum Brain AI v14.0")
+    
+    console.print(Panel(
+        Align.center(info_table),
+        title="[bold bright_magenta blink]⚡ SYSTEM INFO ⚡[/bold bright_magenta blink]",
+        border_style="bright_magenta",
+        box=box.DOUBLE
+    ))
+    console.print("")
+
 def parse_login():
     global USER_ID, SECRET_KEY
-    console.print(Rule("[bold cyan]ĐĂNG NHẬP[/bold cyan]"))
-    link = safe_input("Dán link trò chơi (từ xworld.info) tại đây (ví dụ chứa userId & secretKey) > ", default=None)
-    if not link:
-        console.print("[red]Không nhập link. Thoát.[/red]")
-        sys.exit(1)
+    
+    # Import link manager
+    from link_manager import QuantumLinkManager
+    link_mgr = QuantumLinkManager()
+    
+    # Show cyberpunk login screen
+    show_cyberpunk_login()
+    
+    login_url = None
+    
+    # Check nếu có link đã lưu
+    if link_mgr.has_saved_link():
+        saved_info = link_mgr.get_saved_info()
+        
+        console.print("╔═══════════════════════════════════════════════════════════╗", style="bright_green")
+        console.print("║  🔍 PHÁT HIỆN LINK ĐÃ LƯU!                                ║", style="bright_green")
+        console.print("╚═══════════════════════════════════════════════════════════╝", style="bright_green")
+        console.print("")
+        
+        if saved_info:
+            info_lines = []
+            info_lines.append(f"[bright_cyan]📅 Lưu lúc:[/bright_cyan] [yellow]{saved_info.get('saved_at', 'N/A')}[/yellow]")
+            info_lines.append(f"[bright_cyan]🎮 Game:[/bright_cyan] [yellow]{saved_info.get('game_name', 'N/A')}[/yellow]")
+            info_lines.append(f"[bright_cyan]👤 User ID:[/bright_cyan] [yellow]{saved_info.get('user_id', 'N/A')}[/yellow]")
+            
+            console.print(Panel(
+                "\n".join(info_lines),
+                title="[bold bright_yellow]💾 Link đã lưu[/bold bright_yellow]",
+                border_style="bright_yellow",
+                box=box.ROUNDED
+            ))
+            console.print("")
+        
+        # Hỏi có muốn load link cũ không
+        use_saved = safe_input(
+            "[bold bright_magenta]⚡ Bạn muốn sử dụng link đã lưu? ([bright_green]y[/bright_green]/[bright_red]n[/bright_red]): [/bold bright_magenta]",
+            default="y"
+        ).strip().lower()
+        
+        if use_saved in ['y', 'yes', '']:
+            login_url = link_mgr.load_link()
+            
+            if login_url:
+                console.print("")
+                console.print("✅ [bright_green bold]Đã load link thành công![/bright_green bold]")
+                console.print("")
+                
+                # Animation loading
+                import time
+                with console.status("[bold bright_cyan]⚡ Đang xác thực link...[/bold bright_cyan]", spinner="dots"):
+                    time.sleep(1.5)
+                console.print("✅ [bright_green]Xác thực thành công![/bright_green]\n")
+            else:
+                console.print("[red]❌ Lỗi khi load link. Vui lòng nhập lại.[/red]\n")
+    
+    # Nếu không có link đã lưu hoặc user chọn nhập mới
+    if not login_url:
+        console.print("╔═══════════════════════════════════════════════════════════╗", style="bright_cyan")
+        console.print("║  🔗 NHẬP LINK GAME                                        ║", style="bright_cyan")
+        console.print("╚═══════════════════════════════════════════════════════════╝", style="bright_cyan")
+        console.print("")
+        console.print("[dim bright_yellow]💡 Tip: Link sẽ được lưu tự động cho lần sau![/dim bright_yellow]")
+        console.print("")
+        
+        login_url = safe_input(
+            "[bold bright_magenta]🔗 Dán link từ xworld.info: [/bold bright_magenta]"
+        )
+        
+        if not login_url.strip():
+            console.print("[red]❌ Không nhập link. Thoát.[/red]")
+            sys.exit(0)
+        
+        # Lưu link
+        console.print("")
+        save_link = safe_input(
+            "[bold bright_yellow]💾 Bạn có muốn lưu link này cho lần sau? ([bright_green]y[/bright_green]/[bright_red]n[/bright_red]): [/bold bright_yellow]",
+            default="y"
+        ).strip().lower()
+        
+        if save_link in ['y', 'yes', '']:
+            if link_mgr.save_link(login_url):
+                console.print("✅ [bright_green]Đã lưu link thành công! Link sẽ được mã hóa an toàn.[/bright_green]\n")
+            else:
+                console.print("⚠️  [yellow]Không thể lưu link (link có thể không hợp lệ)[/yellow]\n")
+    
+    # Parse login URL
     try:
-        parsed = urlparse(link)
+        parsed = urlparse(login_url)
         params = parse_qs(parsed.query)
         if 'userId' in params:
             USER_ID = int(params.get('userId')[0])
         SECRET_KEY = params.get('secretKey', [None])[0]
-        console.print(f"[green]✅ Đã đọc: userId={USER_ID}[/green]")
+        
+        # Success message with cyberpunk style
+        console.print("╔═══════════════════════════════════════════════════════════╗", style="bright_green")
+        console.print("║  ✅ ĐĂNG NHẬP THÀNH CÔNG!                                  ║", style="bright_green")
+        console.print("╚═══════════════════════════════════════════════════════════╝", style="bright_green")
+        console.print("")
+        console.print(f"[bright_cyan]👤 User ID:[/bright_cyan] [yellow]{USER_ID}[/yellow]")
+        console.print(f"[bright_cyan]🔑 Secret:[/bright_cyan] [yellow]{SECRET_KEY[:8] if SECRET_KEY else 'N/A'}****[/yellow]")
+        console.print("")
+        
     except Exception as e:
-        console.print("[red]Link không hợp lệ. Thoát.[/red]")
+        console.print("[red]❌ Link không hợp lệ. Thoát.[/red]")
         log_debug(f"parse_login err: {e}")
         sys.exit(1)
 
 def main():
     parse_login()
-    console.print("[bold magenta]Loading...[/bold magenta]")
+    
+    # Cyberpunk loading animation
+    console.print("")
+    with console.status("[bold bright_cyan blink]⚡ Khởi động Quantum Brain AI...[/bold bright_cyan blink]", spinner="dots"):
+        import time
+        time.sleep(2)
+    console.print("✅ [bright_green]Hệ thống đã sẵn sàng![/bright_green]\n")
+    
     prompt_settings()
     console.print("[bold green]Bắt đầu kết nối dữ liệu...[/bold green]")
 
