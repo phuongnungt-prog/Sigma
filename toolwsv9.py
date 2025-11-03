@@ -2451,13 +2451,13 @@ def prompt_settings():
     except Exception:
         bet_rounds_before_skip = 0
 
-    pl = safe_input("Nếu thua thì nghỉ bao nhiêu tay trước khi cược lại (ví dụ 2): ", default="0")
+    pl = safe_input("[bold bright_magenta]⏸️  Nếu thua thì nghỉ bao nhiêu ván trước khi cược lại:[/bold bright_magenta] [dim yellow](ví dụ: 2)[/dim yellow] ", default="0")
     try:
         pause_after_losses = int(pl)
     except Exception:
         pause_after_losses = 0
 
-    pt = safe_input("lãi bao nhiêu thì chốt( không dùng enter): ", default="")
+    pt = safe_input("[bold bright_green]💵 Chốt lời khi đạt bao nhiêu BUILD:[/bold bright_green] [dim yellow](ví dụ: 100)[/dim yellow] ", default="")
     try:
         if pt and pt.strip() != "":
             profit_target = float(pt)
@@ -2469,7 +2469,7 @@ def prompt_settings():
         profit_target = None
         stop_when_profit_reached = False
 
-    sl = safe_input("Lỗ bao nhiêu BUILD thì dừng (ví dụ 100 = dừng khi lỗ 100 BUILD): ", default="")
+    sl = safe_input("[bold bright_red]🛑 Cắt lỗ khi lỗ bao nhiêu BUILD:[/bold bright_red] [dim yellow](ví dụ: 100)[/dim yellow] ", default="")
     console.print("[dim yellow]💡 Lưu ý: Nhập số lỗ BUILD (ví dụ 100), KHÔNG phải số dư cuối[/dim yellow]")
     try:
         if sl and sl.strip() != "":
