@@ -26,7 +26,7 @@ def show_banner():
     title.append("AI Có Bộ Não Thật Sự - Suy Nghĩ & Quyết Định Như Con Người", style="bright_green")
     
     console.print(Panel(
-        Text.from_markup(f"[dim cyan]{brain_art}[/]\n") + title,
+        Text.from_markup(f"[dim cyan]{brain_art}[/dim cyan]\n") + title,
         expand=True,
         border_style="bright_magenta",
         box=box.DOUBLE
@@ -1109,15 +1109,15 @@ def record_bet(issue: int, room_id: int, amount: float, resp: dict, algo_used: O
 
 def place_bet_async(issue: int, room_id: int, amount: float, algo_used: Optional[str] = None):
     def worker():
-        console.print(f"[cyan]Đang đặt {amount} BUILD -> PHÒNG_{room_id} (v{issue}) — Thuật toán: {algo_used}[/]")
+        console.print(f"[cyan]Đang đặt {amount} BUILD -> PHÒNG_{room_id} (v{issue}) — Thuật toán: {algo_used}[/cyan]")
         time.sleep(random.uniform(0.02, 0.25))
         res = place_bet_http(issue, room_id, amount)
         rec = record_bet(issue, room_id, amount, res, algo_used=algo_used)
         if isinstance(res, dict) and (res.get("msg") == "ok" or res.get("code") == 0 or res.get("status") in ("ok", 1)):
             bet_sent_for_issue.add(issue)
-            console.print(f"[green]✅ Đặt thành công {amount} BUILD vào PHÒNG_{room_id} (v{issue}).[/]")
+            console.print(f"[green]✅ Đặt thành công {amount} BUILD vào PHÒNG_{room_id} (v{issue}).[/green]")
         else:
-            console.print(f"[red]❌ Đặt lỗi v{issue}: {res}[/]")
+            console.print(f"[red]❌ Đặt lỗi v{issue}: {res}[/red]")
     threading.Thread(target=worker, daemon=True).start()
 
 # -------------------- LOCK & AUTO-BET --------------------
@@ -1135,7 +1135,7 @@ def lock_prediction_if_needed(force: bool = False):
     if _skip_rounds_remaining > 0:
         # chỉ trừ 1 lần khi sang ván mới
         if _skip_active_issue != issue_id:
-            console.print(f"[yellow]⏸️ Đang nghỉ {_skip_rounds_remaining} ván theo cấu hình sau khi thua.[/]")
+            console.print(f"[yellow]⏸️ Đang nghỉ {_skip_rounds_remaining} ván theo cấu hình sau khi thua.[/yellow]")
             _skip_rounds_remaining -= 1         # tiêu thụ 1 ván nghỉ
             _skip_active_issue = issue_id       # nhớ là ván này đã nghỉ
 
@@ -1160,7 +1160,7 @@ def lock_prediction_if_needed(force: bool = False):
         # get balance quickly (non-blocking - allow poller to update if needed)
         bld, _, _ = fetch_balances_3games(params={"userId": str(USER_ID)} if USER_ID else None)
         if bld is None:
-            console.print("[yellow]⚠️ Không lấy được số dư trước khi đặt — bỏ qua đặt ván này.[/]")
+            console.print("[yellow]⚠️ Không lấy được số dư trước khi đặt — bỏ qua đặt ván này.[/yellow]")
             prediction_locked = False
             return
         global current_bet
@@ -1175,7 +1175,7 @@ def lock_prediction_if_needed(force: bool = False):
         amt = float(current_bet)
         console.print(f"[cyan]💰 Đặt cược: {amt} BUILD (current_bet={current_bet}, base_bet={base_bet}, multiplier={multiplier})[/cyan]")
         if amt <= 0:
-            console.print("[yellow]⚠️ Số tiền đặt không hợp lệ (<=0). Bỏ qua.[/]")
+            console.print("[yellow]⚠️ Số tiền đặt không hợp lệ (<=0). Bỏ qua.[/yellow]")
             prediction_locked = False
             return
         place_bet_async(issue_id, predicted_room, amt, algo_used=algo_used)
@@ -1184,7 +1184,7 @@ def lock_prediction_if_needed(force: bool = False):
             skip_next_round_flag = True
             _rounds_placed_since_skip = 0
     elif skip_next_round_flag:
-        console.print("[yellow]⏸️ TẠM DỪNG THEO DÕI SÁT THỦ[/]")
+        console.print("[yellow]⏸️ TẠM DỪNG THEO DÕI SÁT THỦ[/yellow]")
         skip_next_round_flag = False
 
 # -------------------- WEBSOCKET HANDLERS --------------------
@@ -1227,7 +1227,7 @@ def _extract_issue_id(d: Dict[str, Any]) -> Optional[int]:
 
 def on_open(ws):
     _ws["ws"] = ws
-    console.print("[green]ĐANG TRUY CẬP DỮ LIỆU GAME[/]")
+    console.print("[green]ĐANG TRUY CẬP DỮ LIỆU GAME[/green]")
     safe_send_enter_game(ws)
 
 
@@ -1433,8 +1433,8 @@ def on_message(ws, message):
                 try:
                     # FIX: So sánh lãi/lỗ (cumulative_profit) thay vì số dư (current_build)
                     if stop_when_profit_reached and profit_target is not None and cumulative_profit >= profit_target:
-                        console.print(f"[bold green]🎉 MỤC TIÊU LÃI ĐẠT: {cumulative_profit:+.2f} >= {profit_target}. Dừng tool.[/]")
-                        console.print(f"[green]Số dư hiện tại: {current_build:.2f} BUILD[/]")
+                        console.print(f"[bold green]🎉 MỤC TIÊU LÃI ĐẠT: {cumulative_profit:+.2f} >= {profit_target}. Dừng tool.[/bold green]")
+                        console.print(f"[green]Số dư hiện tại: {current_build:.2f} BUILD[/green]")
                         stop_flag = True
                         try:
                             wsobj = _ws.get("ws")
@@ -1445,8 +1445,8 @@ def on_message(ws, message):
                     
                     # FIX: So sánh lãi/lỗ (cumulative_profit) thay vì số dư
                     if stop_when_loss_reached and stop_loss_target is not None and cumulative_profit <= -abs(stop_loss_target):
-                        console.print(f"[bold red]⚠️ STOP-LOSS TRIGGERED: Lỗ {cumulative_profit:.2f} >= {stop_loss_target}. Dừng tool.[/]")
-                        console.print(f"[red]Số dư hiện tại: {current_build:.2f} BUILD (Bắt đầu: {starting_balance:.2f})[/]")
+                        console.print(f"[bold red]⚠️ STOP-LOSS TRIGGERED: Lỗ {cumulative_profit:.2f} >= {stop_loss_target}. Dừng tool.[/bold red]")
+                        console.print(f"[red]Số dư hiện tại: {current_build:.2f} BUILD (Bắt đầu: {starting_balance:.2f})[/red]")
                         stop_flag = True
                         try:
                             wsobj = _ws.get("ws")
@@ -1602,9 +1602,9 @@ def build_header(border_color: Optional[str] = None):
     right_lines.append(f"Phiên: {issue_id or '-'}")
     right_lines.append(f"chuỗi: thắng={max_win_streak} / thua={max_lose_streak}")
     if stop_when_profit_reached and profit_target is not None:
-        right_lines.append(f"[green]TakeProfit@{profit_target}[/]")
+        right_lines.append(f"[green]TakeProfit@{profit_target}[/green]")
     if stop_when_loss_reached and stop_loss_target is not None:
-        right_lines.append(f"[red]StopLoss@{stop_loss_target}[/]")
+        right_lines.append(f"[red]StopLoss@{stop_loss_target}[/red]")
 
     right = Text.from_markup("\n".join(right_lines))
 
@@ -1625,12 +1625,12 @@ def build_rooms_table(border_color: Optional[str] = None):
         status = ""
         try:
             if killed_room is not None and int(r) == int(killed_room):
-                status = "[red]☠ Kill[/]"
+                status = "[red]☠ Kill[/red]"
         except Exception:
             pass
         try:
             if predicted_room is not None and int(r) == int(predicted_room):
-                status = (status + " [dim]|[/] [green]✓ Dự đoán[/]") if status else "[green]✓ Dự đoán[/]"
+                status = (status + " [dim]|[/dim] [green]✓ Dự đoán[/green]") if status else "[green]✓ Dự đoán[/green]"
         except Exception:
             pass
         players = str(st.get("players", 0))
@@ -1682,8 +1682,8 @@ def build_mid(border_color: Optional[str] = None):
             ]
             lines.append(stages[thinking_stage])
             lines.append("")
-            lines.append("[dim cyan]━━━ NEURAL NETWORK ACTIVE ━━━[/]")
-            lines.append("[bright_green]⚡ Confidence: Building... | Accuracy: Learning...[/]")
+            lines.append("[dim cyan]━━━ NEURAL NETWORK ACTIVE ━━━[/dim cyan]")
+            lines.append("[bright_green]⚡ Confidence: Building... | Accuracy: Learning...[/bright_green]")
         else:
             # fallback compact progress bar (no percent text)
             bar_len = 24
@@ -1708,48 +1708,48 @@ def build_mid(border_color: Optional[str] = None):
         lines = []
         
         # Header với gradient effect
-        lines.append("[bold bright_cyan]╔════════════════════════════════════════╗[/]")
-        lines.append(f"[bold bright_cyan]║[/]  🧠 [bright_green]NEURAL BRAIN DECISION[/]  🧠  [bold bright_cyan]║[/]")
-        lines.append("[bold bright_cyan]╚════════════════════════════════════════╝[/]")
+        lines.append("[bold bright_cyan]╔════════════════════════════════════════╗[/bold bright_cyan]")
+        lines.append(f"[bold bright_cyan]║[/bold bright_cyan]  🧠 [bright_green]NEURAL BRAIN DECISION[/bright_green]  🧠  [bold bright_cyan]║[/bold bright_cyan]")
+        lines.append("[bold bright_cyan]╚════════════════════════════════════════╝[/bold bright_cyan]")
         lines.append("")
         
         # AI Thinking Process (lấy từ neural_brain)
         if hasattr(neural_brain, '_thoughts') and neural_brain._thoughts:
             # Hiển thị 3 dòng cuối của quá trình suy nghĩ
             for thought in neural_brain._thoughts[-3:]:
-                lines.append(f"[dim]{thought}[/]")
+                lines.append(f"[dim]{thought}[/dim]")
             lines.append("")
         
-        lines.append(f"[bold bright_magenta]➤[/] Lựa chọn: [bright_green bold]{name}[/]")
-        lines.append(f"[bold bright_magenta]➤[/] Số đặt: [yellow]{last_bet_amt} BUILD[/]")
+        lines.append(f"[bold bright_magenta]➤[/bold bright_magenta] Lựa chọn: [bright_green bold]{name}[/bright_green bold]")
+        lines.append(f"[bold bright_magenta]➤[/bold bright_magenta] Số đặt: [yellow]{last_bet_amt} BUILD[/yellow]")
         
         # Tính độ tin cậy
         confidence = 0.75 + (win_streak * 0.05) - (lose_streak * 0.05)
         confidence = max(0.4, min(0.95, confidence))
         conf_bar = "█" * int(confidence * 20)
-        lines.append(f"[bold bright_magenta]➤[/] Độ tin cậy: [bright_green]{conf_bar}[/] {confidence:.0%}")
+        lines.append(f"[bold bright_magenta]➤[/bold bright_magenta] Độ tin cậy: [bright_green]{conf_bar}[/bright_green] {confidence:.0%}")
         lines.append("")
         
-        lines.append(f"[dim]Phòng sát thủ trước: {ROOM_NAMES.get(last_killed_room, '-')}[/]")
-        lines.append(f"[dim]Chuỗi: 🎯{win_streak}W | ❌{lose_streak}L[/]")
+        lines.append(f"[dim]Phòng sát thủ trước: {ROOM_NAMES.get(last_killed_room, '-')}[/dim]")
+        lines.append(f"[dim]Chuỗi: 🎯{win_streak}W | ❌{lose_streak}L[/dim]")
         
         if count_down is not None:
             try:
                 cd = int(count_down)
                 lines.append("")
-                lines.append(f"[bold yellow]⏱️ Đếm ngược: {cd}s[/]")
+                lines.append(f"[bold yellow]⏱️ Đếm ngược: {cd}s[/bold yellow]")
             except Exception:
                 pass
         
         lines.append("")
         # Animation dots
         dots = "." * (int(time.time() * 3) % 4)
-        lines.append(f"[bright_cyan]⚡ Neural Network Processing{dots.ljust(3)}[/]")
+        lines.append(f"[bright_cyan]⚡ Neural Network Processing{dots.ljust(3)}[/bright_cyan]")
         
         txt = "\n".join(lines)
         return Panel(
             Align.center(Text.from_markup(txt)), 
-            title="[bold bright_magenta]🔮 AI PREDICTION 🔮[/]", 
+            title="[bold bright_magenta]🔮 AI PREDICTION 🔮[/bold bright_magenta]", 
             border_style="bright_magenta",
             box=box.DOUBLE
         )
@@ -1790,19 +1790,19 @@ def build_reasoning_panel(border_color: Optional[str] = None):
         content = Text("⏳ Đang chờ AI phân tích...", style="dim yellow", justify="center")
     else:
         lines = []
-        lines.append("[bold bright_cyan]🧠 TẠI SAO AI CHỌN PHÒNG NÀY?[/]\n")
+        lines.append("[bold bright_cyan]🧠 TẠI SAO AI CHỌN PHÒNG NÀY?[/bold bright_cyan]\n")
         
         # Hiển thị reasoning với format đẹp
         reasoning_lines = ai_reasoning.split('\n')
         for line in reasoning_lines:
             if line.strip():
-                lines.append(f"[cyan]{line.strip()}[/]")
+                lines.append(f"[cyan]{line.strip()}[/cyan]")
         
         content = Text.from_markup("\n".join(lines))
     
     return Panel(
         Align.center(content),
-        title="[bold bright_magenta]💭 AI REASONING - LÝ DO QUYẾT ĐỊNH 💭[/]",
+        title="[bold bright_magenta]💭 AI REASONING - LÝ DO QUYẾT ĐỊNH 💭[/bold bright_magenta]",
         border_style="bright_magenta",
         box=box.DOUBLE,
         padding=(1, 2)
@@ -1843,7 +1843,7 @@ def prompt_settings():
     global pause_after_losses, profit_target, stop_when_profit_reached
     global stop_loss_target, stop_when_loss_reached, settings
 
-    console.print(Rule("[bold cyan]CẤU HÌNH NHANH[/]"))
+    console.print(Rule("[bold cyan]CẤU HÌNH NHANH[/bold cyan]"))
     base = safe_input("Số BUILD đặt mỗi ván: ", default="1")
     try:
         base_bet = float(base)
@@ -1857,19 +1857,19 @@ def prompt_settings():
     current_bet = base_bet
 
     # Thuật toán cố định - NEURAL BRAIN AI
-    console.print("\n[bold bright_cyan]╔═══════════════════════════════════════════════════════╗[/]")
-    console.print("[bold bright_cyan]║[/]  🧠 [bright_green bold]NEURAL BRAIN AI - BỘ NÃO THÔNG MINH[/]  🧠  [bold bright_cyan]║[/]")
-    console.print("[bold bright_cyan]╚═══════════════════════════════════════════════════════╝[/]")
+    console.print("\n[bold bright_cyan]╔═══════════════════════════════════════════════════════╗[/bold bright_cyan]")
+    console.print("[bold bright_cyan]║[/bold bright_cyan]  🧠 [bright_green bold]NEURAL BRAIN AI - BỘ NÃO THÔNG MINH[/bright_green bold]  🧠  [bold bright_cyan]║[/bold bright_cyan]")
+    console.print("[bold bright_cyan]╚═══════════════════════════════════════════════════════╝[/bold bright_cyan]")
     console.print("")
-    console.print("   [bright_green]✨ Đặc điểm:[/]")
-    console.print("   [cyan]• 🧠 Neural Network - Mạng nơ-ron tự học")
-    console.print("   • 💭 Logic Reasoning - Suy luận logic mạnh mẽ")
-    console.print("   • 🎯 Strategic Planning - Lập kế hoạch chiến lược")
-    console.print("   • 👁️ Pattern Recognition - Nhận diện mô hình")
-    console.print("   • 📊 Predictive Analytics - Phân tích dự đoán")
-    console.print("   • 🔮 150 AI Agents - Bỏ phiếu đồng thuận[/]")
+    console.print("   [bright_green]✨ Đặc điểm:[/bright_green]")
+    console.print("   [cyan]• 🧠 Neural Network - Mạng nơ-ron tự học[/cyan]")
+    console.print("   [cyan]• 💭 Logic Reasoning - Suy luận logic mạnh mẽ[/cyan]")
+    console.print("   [cyan]• 🎯 Strategic Planning - Lập kế hoạch chiến lược[/cyan]")
+    console.print("   [cyan]• 👁️ Pattern Recognition - Nhận diện mô hình[/cyan]")
+    console.print("   [cyan]• 📊 Predictive Analytics - Phân tích dự đoán[/cyan]")
+    console.print("   [cyan]• 🔮 150 AI Agents - Bỏ phiếu đồng thuận[/cyan]")
     console.print("")
-    console.print("   [bright_yellow]🌟 AI này SỨY NGHĨ như CON NGƯỜI thật sự![/]")
+    console.print("   [bright_yellow]🌟 AI này SUY NGHĨ như CON NGƯỜI thật sự![/bright_yellow]")
     settings["algo"] = ALGO_ID
 
     s = safe_input("Chống soi: sau bao nhiêu ván đặt thì nghỉ 1 ván: ", default="0")
@@ -1897,12 +1897,12 @@ def prompt_settings():
         stop_when_profit_reached = False
 
     sl = safe_input("Lỗ bao nhiêu BUILD thì dừng (ví dụ 100 = dừng khi lỗ 100 BUILD): ", default="")
-    console.print("[dim yellow]💡 Lưu ý: Nhập số lỗ BUILD (ví dụ 100), KHÔNG phải số dư cuối[/]")
+    console.print("[dim yellow]💡 Lưu ý: Nhập số lỗ BUILD (ví dụ 100), KHÔNG phải số dư cuối[/dim yellow]")
     try:
         if sl and sl.strip() != "":
             stop_loss_target = float(sl)
             stop_when_loss_reached = True
-            console.print(f"[yellow]✅ Stop-loss: Tool sẽ dừng khi LỖ {stop_loss_target} BUILD[/]")
+            console.print(f"[yellow]✅ Stop-loss: Tool sẽ dừng khi LỖ {stop_loss_target} BUILD[/yellow]")
         else:
             stop_loss_target = None
             stop_when_loss_reached = False
@@ -1920,10 +1920,10 @@ def start_threads():
 
 def parse_login():
     global USER_ID, SECRET_KEY
-    console.print(Rule("[bold cyan]ĐĂNG NHẬP[/]"))
+    console.print(Rule("[bold cyan]ĐĂNG NHẬP[/bold cyan]"))
     link = safe_input("Dán link trò chơi (từ xworld.info) tại đây (ví dụ chứa userId & secretKey) > ", default=None)
     if not link:
-        console.print("[red]Không nhập link. Thoát.[/]")
+        console.print("[red]Không nhập link. Thoát.[/red]")
         sys.exit(1)
     try:
         parsed = urlparse(link)
@@ -1931,23 +1931,23 @@ def parse_login():
         if 'userId' in params:
             USER_ID = int(params.get('userId')[0])
         SECRET_KEY = params.get('secretKey', [None])[0]
-        console.print(f"[green]✅ Đã đọc: userId={USER_ID}[/]")
+        console.print(f"[green]✅ Đã đọc: userId={USER_ID}[/green]")
     except Exception as e:
-        console.print("[red]Link không hợp lệ. Thoát.[/]")
+        console.print("[red]Link không hợp lệ. Thoát.[/red]")
         log_debug(f"parse_login err: {e}")
         sys.exit(1)
 
 def main():
     parse_login()
-    console.print("[bold magenta]Loading...[/]")
+    console.print("[bold magenta]Loading...[/bold magenta]")
     prompt_settings()
-    console.print("[bold green]Bắt đầu kết nối dữ liệu...[/]")
+    console.print("[bold green]Bắt đầu kết nối dữ liệu...[/bold green]")
 
     def on_balance_changed(bal, delta, info):
-        console.print(f"[green]⤴️ cập nhật số dư: {bal:.4f} (Δ {delta:+.4f}) — {info.get('ts')}[/]")
+        console.print(f"[green]⤴️ cập nhật số dư: {bal:.4f} (Δ {delta:+.4f}) — {info.get('ts')}[/green]")
 
     def on_error(msg):
-        console.print(f"[red]Balance poll lỗi: {msg}[/]")
+        console.print(f"[red]Balance poll lỗi: {msg}[/red]")
 
     poller = BalancePoller(USER_ID, SECRET_KEY, poll_seconds=max(1, int(BALANCE_POLL_INTERVAL)), on_balance=on_balance_changed, on_error=on_error, on_status=None)
     poller.start()
@@ -1958,9 +1958,9 @@ def main():
             while not stop_flag:
                 live.update(Group(build_header(), build_mid(), build_rooms_table(), build_reasoning_panel(), build_bet_table()))
                 time.sleep(0.12)
-            console.print("[bold yellow]Tool đã dừng theo yêu cầu hoặc đạt mục tiêu.[/]")
+            console.print("[bold yellow]Tool đã dừng theo yêu cầu hoặc đạt mục tiêu.[/bold yellow]")
         except KeyboardInterrupt:
-            console.print("[yellow]Thoát bằng người dùng.[/]")
+            console.print("[yellow]Thoát bằng người dùng.[/yellow]")
             poller.stop()
 
 if __name__ == "__main__":
