@@ -23,12 +23,12 @@ def show_banner():
     """
     
     title = Text()
-    title.append("⚡ QUANTUM BRAIN AI v14.0 ⚡\n", style="bold bright_cyan blink")
-    title.append("TRÍ TUỆ SIÊU PHÀM", style="bold bright_magenta")
+    title.append("🚀 ULTRA AI v15.0 🚀\n", style="bold bright_cyan blink")
+    title.append("SIÊU TRÍ TUỆ VƯỢT TRỘI", style="bold bright_magenta")
     title.append(" • ", style="dim")
-    title.append("LOGIC CỰC MẠNH", style="bold bright_yellow")
+    title.append("AI CAO CẤP NHẤT", style="bold bright_yellow")
     title.append(" • ", style="dim")
-    title.append("PHÂN TÍCH ĐA CHIỀU", style="bold bright_green")
+    title.append("MACHINE LEARNING", style="bold bright_green")
     
     console.print(Panel(
         Text.from_markup(f"[bright_cyan]{quantum_brain}[/bright_cyan]\n") + title,
@@ -196,10 +196,10 @@ SELECTION_CONFIG = {
     "avoid_last_kill": True,
 }
 
-# selection mode duy nhất - QUANTUM BRAIN AI v14.0
-ALGO_ID = "QUANTUM_BRAIN_AI_v14_SUPERINTELLIGENCE"
+# selection mode duy nhất - ULTRA AI v15.0
+ALGO_ID = "ULTRA_AI_v15_HYPERINTELLIGENCE"
 SELECTION_MODES = {
-    ALGO_ID: "⚡ Quantum Brain AI v14.0 - Trí Tuệ Siêu Phàm (Super Intelligence)"
+    ALGO_ID: "🚀 Ultra AI v15.0 - Siêu Trí Tuệ Vượt Trội (Hyper Intelligence)"
 }
 
 settings = {"algo": ALGO_ID}
@@ -508,14 +508,16 @@ def _room_features_ultimate(rid: int) -> Dict[str, float]:
 
 class UltimateAISelector:
     """
-    ⚡ QUANTUM AI SELECTOR - TRÍ TUỆ SIÊU PHÀM ⚡
+    🚀 ULTRA AI SELECTOR - SIÊU TRÍ TUỆ VƯỢT TRỘI 🚀
     
     Features:
-    - 150 AI Agents với quantum probability
-    - Multi-dimensional analysis (4D)
-    - Deep logic reasoning (5 layers)
-    - Meta-learning (tự tiến hóa)
-    - Causation inference (nhân quả)
+    - 150 AI Agents với advanced neural networks
+    - Advanced ML algorithms (6 types)
+    - Ensemble learning
+    - Reinforcement learning (Q-Learning)
+    - Genetic algorithm evolution
+    - Bayesian optimization
+    - Time series prediction
     """
     FEATURE_KEYS = (
         "players_norm",
@@ -555,14 +557,23 @@ class UltimateAISelector:
         self._pattern_detector: Dict[int, List[int]] = {rid: [] for rid in self.room_ids}
         
         # ⚡ QUANTUM ENHANCEMENTS ⚡
-        self._quantum_states: Dict[int, float] = {rid: 0.5 for rid in self.room_ids}  # Trạng thái lượng tử
-        self._entropy_history: deque = deque(maxlen=50)  # Lịch sử entropy
-        self._logic_chains: List[Dict[str, Any]] = []  # Chuỗi logic
-        self._meta_strategies: Dict[str, Dict[str, Any]] = {  # Meta-learning
+        self._quantum_states: Dict[int, float] = {rid: 0.5 for rid in self.room_ids}
+        self._entropy_history: deque = deque(maxlen=50)
+        self._logic_chains: List[Dict[str, Any]] = []
+        self._meta_strategies: Dict[str, Dict[str, Any]] = {
             "quantum_driven": {"wins": 0, "losses": 0, "confidence": 0.5},
             "data_driven": {"wins": 0, "losses": 0, "confidence": 0.5},
             "hybrid": {"wins": 0, "losses": 0, "confidence": 0.5}
         }
+        
+        # 🚀 ULTRA AI ENHANCEMENTS 🚀
+        try:
+            from ultra_ai_algorithms import EnsemblePredictor, TimeSeriesPredictor
+            self._ensemble_learner = EnsemblePredictor()
+            self._time_series = {rid: TimeSeriesPredictor() for rid in self.room_ids}
+            self._ultra_ai_enabled = True
+        except:
+            self._ultra_ai_enabled = False
 
     @staticmethod
     def _clip(value: float, lo: float, hi: float) -> float:
@@ -2277,21 +2288,33 @@ def prompt_settings():
         multiplier = 2.0
     current_bet = base_bet
 
-    # Thuật toán cố định - QUANTUM BRAIN AI v14.0
-    console.print("\n[bold bright_magenta]╔═══════════════════════════════════════════════════════╗[/bold bright_magenta]")
-    console.print("[bold bright_magenta]║[/bold bright_magenta]  ⚡ [bright_cyan bold blink]QUANTUM BRAIN AI v14.0 - TRÍ TUỆ SIÊU PHÀM[/bright_cyan bold blink]  ⚡  [bold bright_magenta]║[/bold bright_magenta]")
-    console.print("[bold bright_magenta]╚═══════════════════════════════════════════════════════╝[/bold bright_magenta]")
-    console.print("")
-    console.print("   [bright_cyan blink]⚡ QUANTUM COMPUTING ⚡[/bright_cyan blink]")
-    console.print("   [bright_magenta]• 🔮 Multi-Dimensional Analysis - Phân tích đa chiều[/bright_magenta]")
-    console.print("   [bright_magenta]• 🧠 Deep Logic Engine - Suy luận 5 tầng sâu[/bright_magenta]")
-    console.print("   [bright_magenta]• 🎓 Meta-Learning - Học cách học, tự tiến hóa[/bright_magenta]")
-    console.print("   [bright_magenta]• ⚛️  Quantum Probability - Xác suất lượng tử[/bright_magenta]")
-    console.print("   [bright_magenta]• 🌌 Superposition - Chồng chất trạng thái[/bright_magenta]")
-    console.print("   [bright_magenta]• 🔬 Causation Inference - Suy luận nhân quả[/bright_magenta]")
-    console.print("")
-    console.print("   [bright_yellow blink]🌟 TRÍ TUỆ SIÊU PHÀM - PHÂN TÍCH CỰC MẠNH! 🌟[/bright_yellow blink]")
-    console.print("   [dim bright_cyan]◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤[/dim bright_cyan]")
+    # Thuật toán cố định - ULTRA AI v15.0
+    from rich.panel import Panel
+    from rich.text import Text
+    
+    features = Text()
+    features.append("   🚀 ULTRA AI v15.0 - SIÊU TRÍ TUỆ VƯỢT TRỘI\n\n", style="bold bright_cyan")
+    features.append("   🧠 ADVANCED NEURAL NETWORK\n", style="bright_magenta")
+    features.append("     • 64-32-16 Multi-Layer Perceptron\n", style="dim cyan")
+    features.append("     • Backpropagation + Momentum\n", style="dim cyan")
+    features.append("   📊 BAYESIAN OPTIMIZATION\n", style="bright_magenta")
+    features.append("     • Adaptive Prior/Posterior Update\n", style="dim cyan")
+    features.append("   📈 TIME SERIES PREDICTION\n", style="bright_magenta")
+    features.append("     • ARIMA-like Forecasting\n", style="dim cyan")
+    features.append("   🎯 ENSEMBLE LEARNING\n", style="bright_magenta")
+    features.append("     • Multi-Model Fusion\n", style="dim cyan")
+    features.append("   🧬 GENETIC ALGORITHM\n", style="bright_magenta")
+    features.append("     • Evolution-based Strategy\n", style="dim cyan")
+    features.append("   🎮 REINFORCEMENT LEARNING\n", style="bright_magenta")
+    features.append("     • Q-Learning + Experience Replay\n\n", style="dim cyan")
+    features.append("   🌟 AI CAO CẤP NHẤT - MACHINE LEARNING! 🌟", style="bold bright_yellow blink")
+    
+    console.print(Panel(
+        features,
+        title="[bold bright_magenta blink]⚡ ULTRA AI FEATURES ⚡[/bold bright_magenta blink]",
+        border_style="bright_magenta",
+        box=box.DOUBLE
+    ))
     settings["algo"] = ALGO_ID
 
     s = safe_input("[bold bright_cyan]🛡️  Chống soi (số ván đặt trước khi nghỉ 1 ván):[/bold bright_cyan] ", default="0")
@@ -2333,9 +2356,12 @@ def prompt_settings():
         stop_when_loss_reached = False
     
     console.print("")
-    console.print("╔═══════════════════════════════════════════════════════════╗", style="bright_green")
-    console.print("║  ✅ CẤU HÌNH HOÀN TẤT!                                     ║", style="bright_green")
-    console.print("╚═══════════════════════════════════════════════════════════╝", style="bright_green")
+    from rich.panel import Panel
+    console.print(Panel(
+        "[bright_green]✅ CẤU HÌNH HOÀN TẤT![/bright_green]",
+        border_style="bright_green",
+        box=box.DOUBLE
+    ))
     console.print("")
     
     # Animation trước khi clear
@@ -2347,19 +2373,34 @@ def prompt_settings():
     clear_terminal()
     
     # Show startup banner
-    console.print("╔═══════════════════════════════════════════════════════════╗", style="bright_magenta")
-    console.print("║  ⚡ QUANTUM BRAIN AI v14.1 - ĐANG HOẠT ĐỘNG ⚡            ║", style="bright_magenta")
-    console.print("╚═══════════════════════════════════════════════════════════╝", style="bright_magenta")
-    console.print(Align.center(Text("◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤", style="dim bright_cyan")))
-    console.print("")
-    console.print(f"[bright_cyan]💰 Base Bet:[/bright_cyan] [yellow]{base_bet} BUILD[/yellow]")
-    console.print(f"[bright_cyan]📈 Multiplier:[/bright_cyan] [yellow]{multiplier}x[/yellow]")
+    from rich.panel import Panel
+    from rich.text import Text
+    
+    banner = Text()
+    banner.append("🚀 ULTRA AI v15.0 - ĐANG HOẠT ĐỘNG 🚀\n\n", style="bold bright_magenta blink")
+    banner.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n", style="dim bright_cyan")
+    banner.append(f"💰 Base Bet: ", style="bright_cyan")
+    banner.append(f"{base_bet} BUILD\n", style="yellow bold")
+    banner.append(f"📈 Multiplier: ", style="bright_cyan")
+    banner.append(f"{multiplier}x\n", style="yellow bold")
+    
     if stop_when_profit_reached and profit_target:
-        console.print(f"[bright_green]🎯 Take Profit:[/bright_green] [yellow]{profit_target} BUILD[/yellow]")
+        banner.append(f"🎯 Take Profit: ", style="bright_green")
+        banner.append(f"{profit_target} BUILD\n", style="yellow bold")
     if stop_when_loss_reached and stop_loss_target:
-        console.print(f"[bright_red]🛑 Stop Loss:[/bright_red] [yellow]{stop_loss_target} BUILD[/yellow]")
-    console.print("")
-    console.print("[bold bright_green]✅ Hệ thống đã sẵn sàng! Bắt đầu phân tích...[/bold bright_green]")
+        banner.append(f"🛑 Stop Loss: ", style="bright_red")
+        banner.append(f"{stop_loss_target} BUILD\n", style="yellow bold")
+    
+    banner.append("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n", style="dim bright_cyan")
+    banner.append("✅ Hệ thống đã sẵn sàng! AI đang học...", style="bright_green bold")
+    
+    console.print(Panel(
+        banner,
+        title="[bold bright_cyan blink]⚡ SYSTEM STATUS ⚡[/bold bright_cyan blink]",
+        border_style="bright_magenta",
+        box=box.DOUBLE,
+        subtitle="[dim bright_cyan]◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤[/dim bright_cyan]"
+    ))
     console.print("")
 
     runm = safe_input("💯bạn đã sẵn sàng hãy nhấn enter để bắt đầu💯: ", default="AUTO")
@@ -2435,9 +2476,12 @@ def parse_login():
     if link_mgr.has_saved_link():
         saved_info = link_mgr.get_saved_info()
         
-        console.print("╔═══════════════════════════════════════════════════════════╗", style="bright_green")
-        console.print("║  🔍 PHÁT HIỆN LINK ĐÃ LƯU!                                ║", style="bright_green")
-        console.print("╚═══════════════════════════════════════════════════════════╝", style="bright_green")
+        from rich.panel import Panel
+        console.print(Panel(
+            "[bright_green]🔍 PHÁT HIỆN LINK ĐÃ LƯU![/bright_green]",
+            border_style="bright_green",
+            box=box.ROUNDED
+        ))
         console.print("")
         
         if saved_info:
@@ -2478,9 +2522,12 @@ def parse_login():
     
     # Nếu không có link đã lưu hoặc user chọn nhập mới
     if not login_url:
-        console.print("╔═══════════════════════════════════════════════════════════╗", style="bright_cyan")
-        console.print("║  🔗 NHẬP LINK GAME                                        ║", style="bright_cyan")
-        console.print("╚═══════════════════════════════════════════════════════════╝", style="bright_cyan")
+        from rich.panel import Panel
+        console.print(Panel(
+            "[bright_cyan]🔗 NHẬP LINK GAME[/bright_cyan]",
+            border_style="bright_cyan",
+            box=box.ROUNDED
+        ))
         console.print("")
         console.print("[dim bright_yellow]💡 Tip: Link sẽ được lưu tự động cho lần sau![/dim bright_yellow]")
         console.print("")
@@ -2515,9 +2562,12 @@ def parse_login():
         SECRET_KEY = params.get('secretKey', [None])[0]
         
         # Success message with cyberpunk style
-        console.print("╔═══════════════════════════════════════════════════════════╗", style="bright_green")
-        console.print("║  ✅ ĐĂNG NHẬP THÀNH CÔNG!                                  ║", style="bright_green")
-        console.print("╚═══════════════════════════════════════════════════════════╝", style="bright_green")
+        from rich.panel import Panel
+        console.print(Panel(
+            "[bright_green]✅ ĐĂNG NHẬP THÀNH CÔNG![/bright_green]",
+            border_style="bright_green",
+            box=box.DOUBLE
+        ))
         console.print("")
         console.print(f"[bright_cyan]👤 User ID:[/bright_cyan] [yellow]{USER_ID}[/yellow]")
         console.print(f"[bright_cyan]🔑 Secret:[/bright_cyan] [yellow]{SECRET_KEY[:8] if SECRET_KEY else 'N/A'}****[/yellow]")
