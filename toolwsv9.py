@@ -22,8 +22,8 @@ def show_banner():
     """
     
     title = Text()
-    title.append("🧠 NEURAL BRAIN AI 🧠\n", style="bold bright_cyan")
-    title.append("AI Có Bộ Não Thật Sự - Suy Nghĩ & Quyết Định Như Con Người", style="bright_green")
+    title.append("🛡️ NEURAL BRAIN AI v12.0 🛡️\n", style="bold bright_cyan")
+    title.append("AN TOÀN ƯU TIÊN - KHÔNG THEO ĐÁM ĐÔNG", style="bright_green")
     
     console.print(Panel(
         Text.from_markup(f"[dim cyan]{brain_art}[/dim cyan]\n") + title,
@@ -182,10 +182,10 @@ SELECTION_CONFIG = {
     "avoid_last_kill": True,
 }
 
-# selection mode duy nhất - NEURAL BRAIN AI
-ALGO_ID = "NEURAL_BRAIN_AI"
+# selection mode duy nhất - NEURAL BRAIN AI v12.0
+ALGO_ID = "NEURAL_BRAIN_AI_v12_SAFETY_FIRST"
 SELECTION_MODES = {
-    ALGO_ID: "🧠 Neural Brain AI - Bộ Não Thông Minh (Suy Nghĩ & Quyết Định Như Người)"
+    ALGO_ID: "🛡️ Neural Brain AI v12.0 - An Toàn Ưu Tiên (KHÔNG Theo Đám Đông)"
 }
 
 settings = {"algo": ALGO_ID}
@@ -634,32 +634,98 @@ class UltimateAISelector:
                 best_room = rid
         return (best_room or self.room_ids[0]), best_score
 
+    def _calculate_safety_score(self, rid: int, features: Dict[str, float]) -> float:
+        """
+        🛡️ PHÂN TÍCH MỨC ĐỘ AN TOÀN - KHÔNG CHỈ THEO ĐÁM ĐÔNG!
+        Điểm an toàn cao = rủi ro thấp
+        """
+        # 1. Phòng ít người/ít cược = AN TOÀN hơn
+        safety_crowd = features.get("players_norm", 0.5) * 0.25  # 25% trọng số
+        safety_bet = features.get("bet_norm", 0.5) * 0.20  # 20% trọng số
+        
+        # 2. Phòng ổn định, ít biến động = AN TOÀN
+        safety_stable = features.get("stability_score", 0.5) * 0.30  # 30% trọng số - QUAN TRỌNG!
+        
+        # 3. Tỉ lệ sống sót cao = AN TOÀN
+        safety_survive = features.get("survive_score", 0.5) * 0.25  # 25% trọng số
+        
+        # 4. PHÁ BẪY: Phòng nhiều người đột ngột = NGUY HIỂM
+        pressure = features.get("pressure_score", 0.0)
+        trap_penalty = -abs(pressure) * 0.4 if pressure > 0.6 else 0.0
+        
+        # 5. PHÁ BẪY: Phòng đang hot đột biến = NGUY HIỂM
+        momentum = features.get("momentum_players", 0.0)
+        rush_penalty = -abs(momentum) * 0.35 if momentum > 0.5 else 0.0
+        
+        # 6. Tránh phòng vừa kill
+        last_kill_penalty = -1.0 if last_killed_room == rid else 0.0
+        
+        # 7. Phòng có pattern giết liên tục = NGUY HIỂM
+        pattern = features.get("pattern_score", 0.0)
+        pattern_penalty = pattern * 0.5 if pattern < 0 else 0.0
+        
+        # TỔNG HỢP: Điểm an toàn tổng thể
+        total_safety = (
+            safety_crowd + safety_bet + safety_stable + safety_survive +
+            trap_penalty + rush_penalty + last_kill_penalty + pattern_penalty
+        )
+        
+        # Chuẩn hóa về [0, 1]
+        return self._clip((total_safety + 1.0) / 2.0, 0.0, 1.0)
+    
     def select_room(self) -> Tuple[int, str]:
-        """Chọn phòng an toàn nhất với thuật toán thông minh"""
+        """
+        🧠 CHỌN PHÒNG THÔNG MINH - KẾT HỢP VOTES + AN TOÀN
+        KHÔNG chỉ theo đám đông, mà phân tích RỦI RO!
+        """
         with self._lock:
             features_map = {rid: self._compose_features(rid) for rid in self.room_ids}
             self._last_features = features_map
             
-            # Khởi tạo điểm cho mỗi phòng với bias
-            room_scores = {rid: self._room_bias.get(rid, 0.0) * 2.0 for rid in self.room_ids}
+            # Bước 1: Thu thập votes từ 150 agents
+            room_votes = {rid: 0.0 for rid in self.room_ids}
             last_votes: List[Tuple[int, int]] = []
             
-            # Thu thập phiếu từ tất cả 150 agents
             for idx, agent in enumerate(self._agents):
                 voted_room, voted_score = self._agent_vote(agent, features_map)
-                # Tăng trọng số của agent có performance cao
                 weight = 1.0 + agent.get("performance", 0.0) * 0.25
-                room_scores[voted_room] += voted_score * weight
+                room_votes[voted_room] += voted_score * weight
                 last_votes.append((idx, voted_room))
             
             self._last_votes = last_votes
             
-            # Sắp xếp và chọn phòng tốt nhất
-            ranked = sorted(room_scores.items(), key=lambda kv: (-kv[1], kv[0]))
+            # Bước 2: 🛡️ PHÂN TÍCH AN TOÀN cho mỗi phòng
+            room_safety = {rid: self._calculate_safety_score(rid, features_map[rid]) for rid in self.room_ids}
+            
+            # Bước 3: 🎯 KẾT HỢP VOTES + SAFETY (không chỉ theo số đông!)
+            # CÔNG THỨC: 40% votes + 60% safety = AN TOÀN HƠN!
+            room_final_scores = {}
+            for rid in self.room_ids:
+                # Chuẩn hóa votes
+                max_votes = max(room_votes.values()) if room_votes else 1.0
+                normalized_votes = room_votes[rid] / max_votes if max_votes > 0 else 0.0
+                
+                # KẾT HỢP: Ưu tiên AN TOÀN hơn đám đông
+                final_score = (
+                    normalized_votes * 0.40 +  # 40% từ votes
+                    room_safety[rid] * 0.60 +   # 60% từ an toàn - QUAN TRỌNG HƠN!
+                    self._room_bias.get(rid, 0.0) * 0.15  # bias nhỏ
+                )
+                room_final_scores[rid] = final_score
+            
+            # Bước 4: Chọn phòng AN TOÀN NHẤT (không phải votes nhiều nhất!)
+            ranked = sorted(room_final_scores.items(), key=lambda kv: (-kv[1], kv[0]))
             choice = ranked[0][0]
             
-            # Log để debug
-            log_debug(f"🧠 AI chọn phòng {choice} với điểm: {ranked[0][1]:.2f}")
+            # Log chi tiết để debug
+            vote_winner = max(room_votes.items(), key=lambda kv: kv[1])[0]
+            safety_winner = max(room_safety.items(), key=lambda kv: kv[1])[0]
+            
+            log_debug(f"🗳️  Votes nhiều nhất: Phòng {vote_winner} ({room_votes[vote_winner]:.1f} votes)")
+            log_debug(f"🛡️  An toàn nhất: Phòng {safety_winner} (Safety: {room_safety[safety_winner]:.2%})")
+            log_debug(f"🎯 QUYẾT ĐỊNH CUỐI: Phòng {choice} (Score: {room_final_scores[choice]:.3f})")
+            if choice != vote_winner:
+                log_debug(f"⚠️  KHÔNG THEO ĐÁM ĐÔNG! Chọn an toàn thay vì theo số đông")
             
             return choice, ALGO_ID
 
@@ -859,34 +925,76 @@ class NeuralBrain:
         return f"Phòng {max_bet_room} cược cao nhất, Phòng {max_players_room} đông nhất"
     
     def _reason_logically(self, situation: Dict[str, Any]) -> str:
-        """Suy luận logic dựa trên quy tắc"""
+        """
+        🧠 SUY LUẬN LOGIC - PHÂN TÍCH RỦI RO & PHÁ BẪY ĐÁM ĐÔNG
+        """
         logic_rules = []
         
         room_data = situation.get("room_data", {})
         recommended = situation.get("recommended_room")
         
-        # Rule 1: Tránh phòng vừa bị kill
+        # Rule 1: Tránh phòng vừa bị kill - BẪY KINH ĐIỂN
         last_kill = situation.get("last_killed_room")
         if last_kill:
             logic_rules.append(f"❌ Loại phòng {last_kill} (vừa bị sát thủ)")
         
-        # Rule 2: Ưu tiên phòng ổn định
+        # Rule 2: 🚨 CẢNH BÁO BẪY ĐÁM ĐÔNG
+        if room_data:
+            # Tìm phòng đông nhất
+            crowded_room = max(room_data.items(), key=lambda x: x[1].get("players", 0))
+            max_players = crowded_room[1].get("players", 0)
+            
+            # Tìm phòng cược cao nhất
+            high_bet_room = max(room_data.items(), key=lambda x: x[1].get("bet", 0))
+            max_bet = high_bet_room[1].get("bet", 0)
+            
+            # Cảnh báo nếu phòng quá đông
+            if max_players > 25:
+                logic_rules.append(f"⚠️ CẢNH BÁO: Phòng {crowded_room[0]} quá đông ({max_players} người) - Có thể là BẪY!")
+            
+            # Cảnh báo nếu cược quá cao
+            if max_bet > 12000:
+                logic_rules.append(f"⚠️ CẢNH BÁO: Phòng {high_bet_room[0]} cược quá cao ({max_bet:,.0f}) - RỦI RO CAO!")
+        
+        # Rule 3: ✅ PHÂN TÍCH PHÒNG ĐƯỢC CHỌN
         if recommended and recommended in room_data:
             rec_data = room_data[recommended]
             players = rec_data.get("players", 0)
             bet = rec_data.get("bet", 0)
             
-            if players < 15:
-                logic_rules.append(f"✅ Phòng {recommended} ít người ({players} người)")
-            if bet < 8000:
-                logic_rules.append(f"✅ Phòng {recommended} cược thấp ({bet:,.0f} BUILD)")
+            # Đánh giá mức độ an toàn
+            safety_level = "🟢 AN TOÀN"
+            if players < 10:
+                safety_level = "🟢 RẤT AN TOÀN"
+            elif players < 20:
+                safety_level = "🟡 KHÁ AN TOÀN"
+            elif players < 30:
+                safety_level = "🟠 TRUNG BÌNH"
+            else:
+                safety_level = "🔴 RỦI RO"
             
-            # Rule 3: So sánh với các phòng khác
+            logic_rules.append(f"{safety_level} | Phòng {recommended}: {players} người, {bet:,.0f} BUILD")
+            
+            # Rule 4: So sánh với đám đông
             other_rooms = [r for r in room_data if r != recommended]
             if other_rooms:
                 avg_players = sum(room_data[r].get("players", 0) for r in other_rooms) / len(other_rooms)
-                if players < avg_players:
-                    logic_rules.append(f"✅ An toàn hơn TB ({players} < {avg_players:.0f} người)")
+                avg_bet = sum(room_data[r].get("bet", 0) for r in other_rooms) / len(other_rooms)
+                
+                # PHÁ BẪY: Nếu chọn phòng khác với đám đông
+                if players < avg_players * 0.7:
+                    logic_rules.append(f"💡 KHÔNG THEO ĐÁM ĐÔNG: {players} người < TB {avg_players:.0f} người")
+                elif players > avg_players * 1.5:
+                    logic_rules.append(f"⚠️ THEO ĐÁM ĐÔNG: {players} người > TB {avg_players:.0f} người - NGUY HIỂM!")
+                
+                if bet < avg_bet * 0.7:
+                    logic_rules.append(f"✅ Cược thấp hơn TB: {bet:,.0f} < {avg_bet:,.0f} BUILD")
+        
+        # Rule 5: Phân tích xu hướng
+        if situation.get("win_streak", 0) >= 3:
+            logic_rules.append(f"🔥 Đang thắng {situation['win_streak']} ván liên tiếp - Giữ chiến lược")
+        elif situation.get("lose_streak", 0) >= 2:
+            logic_rules.append(f"⚠️ Thua {situation['lose_streak']} ván - Cần thận trọng!")
         
         return " • ".join(logic_rules) if logic_rules else "Phân tích dữ liệu cơ bản"
     
@@ -1856,20 +1964,20 @@ def prompt_settings():
         multiplier = 2.0
     current_bet = base_bet
 
-    # Thuật toán cố định - NEURAL BRAIN AI
+    # Thuật toán cố định - NEURAL BRAIN AI v12.0
     console.print("\n[bold bright_cyan]╔═══════════════════════════════════════════════════════╗[/bold bright_cyan]")
-    console.print("[bold bright_cyan]║[/bold bright_cyan]  🧠 [bright_green bold]NEURAL BRAIN AI - BỘ NÃO THÔNG MINH[/bright_green bold]  🧠  [bold bright_cyan]║[/bold bright_cyan]")
+    console.print("[bold bright_cyan]║[/bold bright_cyan]  🛡️ [bright_green bold]NEURAL BRAIN AI v12.0 - AN TOÀN ƯU TIÊN[/bright_green bold]  🛡️  [bold bright_cyan]║[/bold bright_cyan]")
     console.print("[bold bright_cyan]╚═══════════════════════════════════════════════════════╝[/bold bright_cyan]")
     console.print("")
-    console.print("   [bright_green]✨ Đặc điểm:[/bright_green]")
-    console.print("   [cyan]• 🧠 Neural Network - Mạng nơ-ron tự học[/cyan]")
-    console.print("   [cyan]• 💭 Logic Reasoning - Suy luận logic mạnh mẽ[/cyan]")
-    console.print("   [cyan]• 🎯 Strategic Planning - Lập kế hoạch chiến lược[/cyan]")
-    console.print("   [cyan]• 👁️ Pattern Recognition - Nhận diện mô hình[/cyan]")
-    console.print("   [cyan]• 📊 Predictive Analytics - Phân tích dự đoán[/cyan]")
-    console.print("   [cyan]• 🔮 150 AI Agents - Bỏ phiếu đồng thuận[/cyan]")
+    console.print("   [bright_green]✨ Đặc điểm mới:[/bright_green]")
+    console.print("   [cyan]• 🛡️ Safety First - An toàn ưu tiên số 1[/cyan]")
+    console.print("   [cyan]• 🚫 Anti-Crowd - KHÔNG theo đám đông mù quáng[/cyan]")
+    console.print("   [cyan]• 🎯 Risk Analysis - Phân tích rủi ro thông minh[/cyan]")
+    console.print("   [cyan]• 💡 Trap Detection - Phát hiện & tránh bẫy[/cyan]")
+    console.print("   [cyan]• 📊 40% Votes + 60% Safety = SMART CHOICE[/cyan]")
+    console.print("   [cyan]• 🧠 150 AI Agents + Logic Reasoning[/cyan]")
     console.print("")
-    console.print("   [bright_yellow]🌟 AI này SUY NGHĨ như CON NGƯỜI thật sự![/bright_yellow]")
+    console.print("   [bright_yellow]🌟 PHÂN TÍCH AN TOÀN, KHÔNG CHỈ THEO SỐ ĐÔNG![/bright_yellow]")
     settings["algo"] = ALGO_ID
 
     s = safe_input("Chống soi: sau bao nhiêu ván đặt thì nghỉ 1 ván: ", default="0")
