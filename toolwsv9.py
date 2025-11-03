@@ -574,6 +574,16 @@ class UltimateAISelector:
             self._ultra_ai_enabled = True
         except:
             self._ultra_ai_enabled = False
+        
+        # 🎓 SELF-LEARNING AI 🎓
+        try:
+            from self_learning_ai import SelfLearningAI
+            self._self_learning_ai = SelfLearningAI()
+            self._learning_enabled = True
+            log_debug("✅ Self-Learning AI initialized!")
+        except Exception as e:
+            self._learning_enabled = False
+            log_debug(f"⚠️ Self-Learning AI disabled: {e}")
 
     @staticmethod
     def _clip(value: float, lo: float, hi: float) -> float:
@@ -968,30 +978,52 @@ class UltimateAISelector:
                 max_votes = max(room_votes.values()) if room_votes else 1.0
                 normalized_votes = room_votes[rid] / max_votes if max_votes > 0 else 0.0
                 
-                # ⚡ SUPER FORMULA - Quantum Intelligence
+                # 🎓 SELF-LEARNING PREDICTION
+                learning_boost = 0.0
+                if self._learning_enabled:
+                    try:
+                        room_data = {
+                            "players": int(features_map[rid].get("players_norm", 0.5) * 50),
+                            "bet": features_map[rid].get("bet_norm", 0.5) * 100,
+                            "survive_rate": features_map[rid].get("survive_score", 0.5)
+                        }
+                        
+                        prediction = self._self_learning_ai.get_room_prediction(
+                            rid, features_map[rid], room_data
+                        )
+                        
+                        learning_boost = prediction["final_score"]
+                        
+                        # Log nếu learning có insight mạnh
+                        if prediction["final_score"] > 0.7 or prediction["final_score"] < 0.3:
+                            log_debug(f"🎓 Room {rid} learning score: {learning_boost:.2f} (learned_rate: {prediction['learned_rate']:.2f})")
+                    except:
+                        pass
+                
+                # ⚡ SUPER FORMULA - Quantum Intelligence + Self-Learning
                 if best_strategy == "quantum_driven":
-                    # Ưu tiên quantum probability
+                    final_score = (
+                        normalized_votes * 0.20 +
+                        room_safety[rid] * 0.25 +
+                        room_quantum[rid] * 0.30 +
+                        room_logic[rid] * 0.10 +
+                        learning_boost * 0.15  # 15% từ self-learning!
+                    )
+                elif best_strategy == "data_driven":
+                    final_score = (
+                        normalized_votes * 0.25 +
+                        room_safety[rid] * 0.40 +
+                        room_quantum[rid] * 0.10 +
+                        room_logic[rid] * 0.10 +
+                        learning_boost * 0.15
+                    )
+                else:  # hybrid
                     final_score = (
                         normalized_votes * 0.25 +
                         room_safety[rid] * 0.30 +
-                        room_quantum[rid] * 0.35 +  # 35% quantum!
-                        room_logic[rid] * 0.10
-                    )
-                elif best_strategy == "data_driven":
-                    # Ưu tiên dữ liệu lịch sử
-                    final_score = (
-                        normalized_votes * 0.30 +
-                        room_safety[rid] * 0.50 +
-                        room_quantum[rid] * 0.10 +
-                        room_logic[rid] * 0.10
-                    )
-                else:  # hybrid
-                    # Cân bằng tất cả
-                    final_score = (
-                        normalized_votes * 0.30 +
-                        room_safety[rid] * 0.35 +
-                        room_quantum[rid] * 0.25 +
-                        room_logic[rid] * 0.10
+                        room_quantum[rid] * 0.20 +
+                        room_logic[rid] * 0.10 +
+                        learning_boost * 0.15
                     )
                 
                 room_final_scores[rid] = final_score
@@ -1033,8 +1065,8 @@ class UltimateAISelector:
 
     def update(self, predicted_room: Optional[int], killed_room: Optional[int]):
         """
-        ⚡ CẬP NHẬT & TỰ HỌC - QUANTUM LEARNING ⚡
-        Học từ kết quả + Cập nhật meta-strategies
+        🎓 CẬP NHẬT & TỰ HỌC - SELF-LEARNING AI ⚡
+        Học từ kết quả + Cập nhật tất cả learners
         """
         if predicted_room is None:
             return
@@ -1048,6 +1080,35 @@ class UltimateAISelector:
                     self._meta_strategies[strategy_name]["wins"] += 1
                 else:
                     self._meta_strategies[strategy_name]["losses"] += 1
+            
+            # 🎓 SELF-LEARNING: Học từ ván này
+            if self._learning_enabled and killed_room is not None:
+                try:
+                    # Lấy features của phòng đã chọn
+                    room_features = self._last_features.get(predicted_room, {})
+                    
+                    # Lấy room data từ global hoặc estimate
+                    room_data = {
+                        "players": int(room_features.get("players_norm", 0.5) * 50),
+                        "bet": room_features.get("bet_norm", 0.5) * 100,
+                        "survive_rate": room_features.get("survive_score", 0.5)
+                    }
+                    
+                    # HỌC TỪ VÁN NÀY!
+                    self._self_learning_ai.learn_from_round(
+                        chosen_room=predicted_room,
+                        room_features=room_features,
+                        killed_room=killed_room,
+                        room_data=room_data
+                    )
+                    
+                    # Log insights mỗi 10 ván
+                    if self._self_learning_ai.total_rounds % 10 == 0:
+                        insights = self._self_learning_ai.get_full_insights()
+                        log_debug(f"📚 LEARNING PROGRESS:\n{insights}")
+                    
+                except Exception as e:
+                    log_debug(f"⚠️ Learning error: {e}")
             
             if not self._last_votes:
                 return
