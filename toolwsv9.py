@@ -254,10 +254,22 @@ def clear_terminal():
 
 
 def safe_input(prompt: str, default=None, cast=None):
+    """
+    Safe input with Rich markup support
+    """
     try:
-        s = input(prompt).strip()
+        # Use Rich console.input() to support markup
+        from rich.text import Text
+        s = console.input(Text.from_markup(prompt)).strip()
     except EOFError:
         return default
+    except Exception:
+        # Fallback to plain input if markup fails
+        try:
+            s = input(prompt).strip()
+        except EOFError:
+            return default
+    
     if s == "":
         return default
     if cast:
