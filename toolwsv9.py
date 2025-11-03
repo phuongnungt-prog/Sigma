@@ -1613,6 +1613,28 @@ def place_bet_async(issue: int, room_id: int, amount: float, algo_used: Optional
         if isinstance(res, dict) and (res.get("msg") == "ok" or res.get("code") == 0 or res.get("status") in ("ok", 1)):
             bet_sent_for_issue.add(issue)
             console.print(f"[green]✅ Đặt thành công {amount} BUILD vào PHÒNG_{room_id} (v{issue}).[/green]")
+            
+            # 🧹 Clear terminal sau khi đặt cược xong
+            time.sleep(0.5)  # Wait để user thấy message
+            clear_terminal()
+            
+            # Show bet confirmation banner
+            from rich.panel import Panel
+            from rich.text import Text
+            banner = Text()
+            banner.append("✅ CƯỢC ĐÃ ĐẶT!\n\n", style="bold bright_green")
+            banner.append(f"Phòng: {ROOM_NAMES.get(room_id, f'Phòng {room_id}')}\n", style="bright_cyan")
+            banner.append(f"Số tiền: {amount} BUILD\n", style="yellow bold")
+            banner.append(f"Ván: {issue}\n", style="dim")
+            banner.append(f"\n⏳ Đang chờ kết quả...", style="bright_yellow blink")
+            
+            console.print(Panel(
+                banner,
+                title="[bold bright_green]💰 BET PLACED 💰[/bold bright_green]",
+                border_style="bright_green",
+                box=box.DOUBLE
+            ))
+            console.print("")
         else:
             console.print(f"[red]❌ Đặt lỗi v{issue}: {res}[/red]")
     threading.Thread(target=worker, daemon=True).start()
@@ -2331,10 +2353,17 @@ def prompt_settings():
     global stop_loss_target, stop_when_loss_reached, settings
 
     # Cyberpunk config header
-    console.print("╔═══════════════════════════════════════════════════════════╗", style="bright_cyan")
-    console.print("║  ⚙️  CẤU HÌNH QUANTUM BRAIN AI                            ║", style="bright_cyan")
-    console.print("╚═══════════════════════════════════════════════════════════╝", style="bright_cyan")
-    console.print(Align.center(Text("◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤", style="dim bright_magenta")))
+    from rich.panel import Panel
+    from rich.text import Text
+    
+    config_title = Text()
+    config_title.append("⚙️  CẤU HÌNH ULTRA AI v15.0", style="bold bright_cyan")
+    
+    console.print(Panel(
+        config_title,
+        border_style="bright_cyan",
+        box=box.DOUBLE
+    ))
     console.print("")
     
     base = safe_input("[bold bright_cyan]💰 Số BUILD đặt mỗi ván:[/bold bright_cyan] ", default="1")
@@ -2352,27 +2381,25 @@ def prompt_settings():
     # Thuật toán cố định - ULTRA AI v15.0
     from rich.panel import Panel
     from rich.text import Text
+    from rich import box
     
     features = Text()
-    features.append("   🚀 ULTRA AI v15.0 - SIÊU TRÍ TUỆ VƯỢT TRỘI\n\n", style="bold bright_cyan")
-    features.append("   🧠 ADVANCED NEURAL NETWORK\n", style="bright_magenta")
-    features.append("     • 64-32-16 Multi-Layer Perceptron\n", style="dim cyan")
-    features.append("     • Backpropagation + Momentum\n", style="dim cyan")
-    features.append("   📊 BAYESIAN OPTIMIZATION\n", style="bright_magenta")
-    features.append("     • Adaptive Prior/Posterior Update\n", style="dim cyan")
-    features.append("   📈 TIME SERIES PREDICTION\n", style="bright_magenta")
-    features.append("     • ARIMA-like Forecasting\n", style="dim cyan")
-    features.append("   🎯 ENSEMBLE LEARNING\n", style="bright_magenta")
-    features.append("     • Multi-Model Fusion\n", style="dim cyan")
-    features.append("   🧬 GENETIC ALGORITHM\n", style="bright_magenta")
-    features.append("     • Evolution-based Strategy\n", style="dim cyan")
-    features.append("   🎮 REINFORCEMENT LEARNING\n", style="bright_magenta")
-    features.append("     • Q-Learning + Experience Replay\n\n", style="dim cyan")
-    features.append("   🌟 AI CAO CẤP NHẤT - MACHINE LEARNING! 🌟", style="bold bright_yellow blink")
+    features.append("🚀 ULTRA AI v15.0 - SIÊU TRÍ TUỆ VƯỢT TRỘI\n\n", style="bold bright_cyan")
+    features.append("🎓 SELF-LEARNING AI\n", style="bright_magenta bold")
+    features.append("  • Học từ TỪNG VÁN chơi\n", style="cyan")
+    features.append("  • Tự điều chỉnh weights\n", style="cyan")
+    features.append("  • Nhận dạng patterns game\n", style="cyan")
+    features.append("  • Nhớ tình huống tốt/xấu\n\n", style="cyan")
+    features.append("🧠 ADVANCED ALGORITHMS\n", style="bright_magenta bold")
+    features.append("  • Neural Network (64-32-16)\n", style="cyan")
+    features.append("  • Bayesian Optimization\n", style="cyan")
+    features.append("  • Ensemble Learning\n", style="cyan")
+    features.append("  • Q-Learning + Replay\n\n", style="cyan")
+    features.append("🌟 TỰ HỌC - TỰ TIẾN HÓA! 🌟", style="bold bright_yellow blink")
     
     console.print(Panel(
         features,
-        title="[bold bright_magenta blink]⚡ ULTRA AI FEATURES ⚡[/bold bright_magenta blink]",
+        title="[bold bright_magenta blink]⚡ ULTRA AI - TỰ HỌC ⚡[/bold bright_magenta blink]",
         border_style="bright_magenta",
         box=box.DOUBLE
     ))
