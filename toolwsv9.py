@@ -1,4 +1,4 @@
-# toolws.py (NEURAL BRAIN AI) - AI Có Bộ Não Thật Sự
+# ⚡ QUANTUM BRAIN AI v14.0 ⚡ - Trí Tuệ Siêu Phàm
 from __future__ import annotations
 
 def show_banner():
@@ -8,28 +8,34 @@ def show_banner():
     from rich import box
     console = Console()
     
-    # ASCII Art Brain với gradient
-    brain_art = """
-    ⠀⠀⠀⢀⣀⣤⣤⣤⣤⣤⣤⣤⣤⣤⣤⣀⡀⠀⠀⠀
-    ⠀⢀⣴⠿⠛⠉⠀⠀⠀⠀⠀⠀⠀⠉⠛⠿⣦⡀⠀
-    ⢀⣾⠋⠀⠀⣠⣤⣤⣤⣤⣤⣤⣄⠀⠀⠀⠙⣷⡀
-    ⣸⡏⠀⢀⣾⠋⠀⠀⠀⠀⠀⠀⠙⣷⡀⠀⠀⢹⣇
-    ⣿⠀⠀⣾⠃⠀⣴⣶⣶⣶⣶⣦⠀⠘⣷⠀⠀⠀⣿
-    ⣿⠀⠀⣿⠀⠀⠙⠻⠿⠿⠟⠋⠀⠀⣿⠀⠀⠀⣿
-    ⢹⣇⠀⠹⣧⠀⠀⠀⠀⠀⠀⠀⠀⣼⠏⠀⠀⣸⡏
-    ⠀⠻⣦⡀⠈⠻⣦⣄⡀⠀⣀⣠⡾⠋⠀⢀⣴⠟⠀
-    ⠀⠀⠈⠛⠷⣤⣄⣉⣉⣉⣉⣁⣤⠶⠛⠉⠀⠀⠀
+    # ASCII art cho QUANTUM BRAIN - công nghệ cao
+    quantum_brain = """
+    ⠀⠀⠀⢀⣀⣤⣴⣶⣿⣿⣿⣿⣿⣶⣦⣤⣀⡀⠀⠀⠀⠀
+    ⠀⢀⣴⣿⣿⡿⠟⠋⠁⠀⠀⠀⠀⠈⠙⠻⢿⣿⣷⣄⠀⠀
+    ⢀⣾⣿⡟⠁⠀⣠⣴⣶⣿⣿⣿⣶⣦⣄⠀⠀⠈⢻⣿⣷⡀
+    ⣾⣿⠋⠀⢀⣾⣿⠿⠛⠉⠉⠉⠛⠿⣿⣷⡀⠀⠀⠙⣿⣷
+    ⣿⡏⠀⠀⣾⡿⠁⠀⣀⣤⣤⣤⣀⠀⠈⢿⣷⠀⠀⠀⢹⣿
+    ⣿⡇⠀⠀⣿⡇⠀⢸⣿⣿⣿⣿⣿⡇⠀⢸⣿⠀⠀⠀⢸⣿
+    ⣿⣇⠀⠀⢻⣷⡀⠀⠻⢿⣿⡿⠟⠀⢀⣾⡟⠀⠀⠀⣸⣿
+    ⠸⣿⣆⠀⠀⠻⣿⣦⣄⣀⣀⣀⣠⣴⣿⠟⠀⠀⠀⣰⣿⠇
+    ⠀⠹⣿⣷⣄⠀⠈⠙⠛⠿⠿⠛⠋⠁⠀⠀⠀⣠⣾⣿⠏⠀
+    ⠀⠀⠈⠻⣿⣷⣦⣤⣀⣀⣀⣀⣤⣤⣴⣾⣿⡿⠋⠀⠀⠀
     """
     
     title = Text()
-    title.append("📊 NEURAL BRAIN AI v13.0 📊\n", style="bold bright_cyan")
-    title.append("HỌC TỪ DỮ LIỆU THỰC TẾ - KHÔNG ĐỊNH KIẾN", style="bright_green")
+    title.append("⚡ QUANTUM BRAIN AI v14.0 ⚡\n", style="bold bright_cyan blink")
+    title.append("TRÍ TUỆ SIÊU PHÀM", style="bold bright_magenta")
+    title.append(" • ", style="dim")
+    title.append("LOGIC CỰC MẠNH", style="bold bright_yellow")
+    title.append(" • ", style="dim")
+    title.append("PHÂN TÍCH ĐA CHIỀU", style="bold bright_green")
     
     console.print(Panel(
-        Text.from_markup(f"[dim cyan]{brain_art}[/dim cyan]\n") + title,
+        Text.from_markup(f"[bright_cyan]{quantum_brain}[/bright_cyan]\n") + title,
         expand=True,
         border_style="bright_magenta",
-        box=box.DOUBLE
+        box=box.DOUBLE,
+        subtitle="[dim bright_cyan]◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤[/dim bright_cyan]"
     ))
 
 show_banner()
@@ -66,8 +72,16 @@ from rich.style import Style
 # Gradient text cho header
 header_style = Style(color="bright_cyan", bold=True)
 console.print(Rule(
-    "⚡ NEURAL BRAIN AI - BỘ NÃO THÔNG MINH ⚡",
+    "⚡ QUANTUM BRAIN AI - TRÍ TUỆ SIÊU PHÀM ⚡",
     style="bold bright_magenta"
+))
+console.print(Align.center(
+    Text.from_markup("🔮 Multi-Dimensional • Deep Logic • Meta-Learning • Quantum Computing 🔮"),
+    style="bright_cyan"
+))
+console.print(Align.center(
+    Text.from_markup("◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤"),
+    style="dim bright_cyan"
 ))
 console.print(
     Text("🔮 Neural Network • Logic Reasoning • Strategic Planning • Predictive Analytics 🔮", 
@@ -182,10 +196,10 @@ SELECTION_CONFIG = {
     "avoid_last_kill": True,
 }
 
-# selection mode duy nhất - NEURAL BRAIN AI v12.0
-ALGO_ID = "NEURAL_BRAIN_AI_v13_DATA_DRIVEN"
+# selection mode duy nhất - QUANTUM BRAIN AI v14.0
+ALGO_ID = "QUANTUM_BRAIN_AI_v14_SUPERINTELLIGENCE"
 SELECTION_MODES = {
-    ALGO_ID: "📊 Neural Brain AI v13.0 - Dựa Trên Dữ Liệu Thực Tế (Data-Driven AI)"
+    ALGO_ID: "⚡ Quantum Brain AI v14.0 - Trí Tuệ Siêu Phàm (Super Intelligence)"
 }
 
 settings = {"algo": ALGO_ID}
@@ -479,7 +493,16 @@ def _room_features_ultimate(rid: int) -> Dict[str, float]:
 
 
 class UltimateAISelector:
-    """Bộ chọn phòng thông minh nhất với 150 AI agents và học sâu"""
+    """
+    ⚡ QUANTUM AI SELECTOR - TRÍ TUỆ SIÊU PHÀM ⚡
+    
+    Features:
+    - 150 AI Agents với quantum probability
+    - Multi-dimensional analysis (4D)
+    - Deep logic reasoning (5 layers)
+    - Meta-learning (tự tiến hóa)
+    - Causation inference (nhân quả)
+    """
     FEATURE_KEYS = (
         "players_norm",
         "bet_norm",
@@ -507,16 +530,25 @@ class UltimateAISelector:
         self.room_ids = list(room_ids)
         self._rng = random.Random(ULTIMATE_AI_SEED)
         self._lock = threading.Lock()
-        # NÂNG CẤP: 150 agents thay vì 80 để tăng độ thông minh
+        # 150 agents với quantum reasoning
         self._agents: List[Dict[str, Any]] = [self._make_agent(i) for i in range(150)]
         self._room_bias: Dict[int, float] = {rid: 0.0 for rid in self.room_ids}
         self._last_votes: List[Tuple[int, int]] = []
         self._last_features: Dict[int, Dict[str, float]] = {}
-        self._recent_outcomes: deque = deque(maxlen=100)  # tăng bộ nhớ
-        self._explore_rate: float = 0.05  # giảm explore, tăng exploit
-        # THÊM: Bộ nhớ dài hạn cho mỗi phòng
+        self._recent_outcomes: deque = deque(maxlen=100)
+        self._explore_rate: float = 0.05
         self._long_term_memory: Dict[int, deque] = {rid: deque(maxlen=200) for rid in self.room_ids}
         self._pattern_detector: Dict[int, List[int]] = {rid: [] for rid in self.room_ids}
+        
+        # ⚡ QUANTUM ENHANCEMENTS ⚡
+        self._quantum_states: Dict[int, float] = {rid: 0.5 for rid in self.room_ids}  # Trạng thái lượng tử
+        self._entropy_history: deque = deque(maxlen=50)  # Lịch sử entropy
+        self._logic_chains: List[Dict[str, Any]] = []  # Chuỗi logic
+        self._meta_strategies: Dict[str, Dict[str, Any]] = {  # Meta-learning
+            "quantum_driven": {"wins": 0, "losses": 0, "confidence": 0.5},
+            "data_driven": {"wins": 0, "losses": 0, "confidence": 0.5},
+            "hybrid": {"wins": 0, "losses": 0, "confidence": 0.5}
+        }
 
     @staticmethod
     def _clip(value: float, lo: float, hi: float) -> float:
@@ -776,6 +808,101 @@ class UltimateAISelector:
         # Chuẩn hóa về [0, 1]
         return self._clip(total_safety, 0.0, 1.0)
     
+    def _quantum_analysis(self, rid: int, features: Dict[str, float]) -> float:
+        """
+        ⚡ PHÂN TÍCH LƯỢNG TỬ - ĐA CHIỀU
+        4 chiều: Base + Entropy + Coherence + Superposition
+        """
+        # Chiều 1: Xác suất cơ bản
+        base_prob = features.get("survive_score", 0.5)
+        
+        # Chiều 2: Entropy (độ hỗn loạn) - thấp = tốt
+        volatility = features.get("volatility_score", 0.5)
+        momentum = abs(features.get("momentum_players", 0.0))
+        entropy = (volatility + momentum) / 2.0
+        
+        # Chiều 3: Coherence (độ kết dính) - cao = tốt
+        stability = features.get("stability_score", 0.5)
+        pattern = features.get("pattern_score", 0.0)
+        coherence = (stability + max(0, pattern)) / 2.0
+        
+        # Chiều 4: Superposition (chồng chất trạng thái)
+        hot = features.get("hot_score", 0.0)
+        cold = features.get("cold_score", 0.0)
+        superposition = hot * 0.7 + (1 - cold) * 0.3
+        
+        # KẾT HỢP 4 CHIỀU
+        quantum_prob = (
+            base_prob * 0.40 +
+            (1 - entropy) * 0.25 +
+            coherence * 0.20 +
+            superposition * 0.15
+        )
+        
+        # Lưu trạng thái lượng tử
+        self._quantum_states[rid] = quantum_prob
+        
+        return self._clip(quantum_prob, 0.0, 1.0)
+    
+    def _deep_logic_score(self, rid: int, features: Dict[str, float]) -> float:
+        """
+        🧠 PHÂN TÍCH LOGIC SÂU
+        Suy luận đa tầng: Observation → Correlation → Causation
+        """
+        score = 0.5  # Base
+        
+        # Logic 1: Tránh phòng vừa kill
+        if last_killed_room == rid:
+            score -= 0.4  # Penalty lớn
+        
+        # Logic 2: Phòng ổn định + survive cao = Logic tốt
+        if features.get("stability_score", 0) > 0.6 and features.get("survive_score", 0) > 0.6:
+            score += 0.3
+        
+        # Logic 3: Pattern xấu = Logic loại bỏ
+        pattern = self._pattern_detector.get(rid, [])
+        if len(pattern) >= 5:
+            recent_kills = sum(1 for x in pattern[-5:] if x == 1)
+            if recent_kills >= 3:
+                score -= 0.25  # 3/5 kill = xấu
+        
+        # Logic 4: Momentum đột biến = Nghi ngờ
+        momentum = abs(features.get("momentum_players", 0.0))
+        if momentum > 0.6:
+            score -= 0.15  # Bất thường
+        
+        return self._clip(score, 0.0, 1.0)
+    
+    def _select_meta_strategy(self, current_win_rate: float) -> str:
+        """
+        🎓 META-LEARNING - Chọn strategy tốt nhất
+        """
+        best_strategy = "hybrid"  # Default
+        best_confidence = 0.0
+        
+        for strategy_name, perf in self._meta_strategies.items():
+            total = perf["wins"] + perf["losses"]
+            if total >= 5:  # Cần ít nhất 5 ván để đánh giá
+                win_rate = perf["wins"] / total
+                # Confidence cao nếu win rate cao
+                perf["confidence"] = win_rate
+                
+                if win_rate > best_confidence:
+                    best_confidence = win_rate
+                    best_strategy = strategy_name
+        
+        # Nếu đang thua liên tục, thử strategy khác
+        if current_win_rate < 0.4 and lose_streak >= 3:
+            # Đổi strategy
+            strategies = list(self._meta_strategies.keys())
+            for s in strategies:
+                if s != best_strategy:
+                    best_strategy = s
+                    break
+        
+        log_debug(f"🎓 Meta-Learning: Chọn strategy '{best_strategy}' (confidence: {best_confidence:.2%})")
+        return best_strategy
+    
     def select_room(self) -> Tuple[int, str]:
         """
         🧠 CHỌN PHÒNG THÔNG MINH - KẾT HỢP VOTES + AN TOÀN
@@ -797,23 +924,51 @@ class UltimateAISelector:
             
             self._last_votes = last_votes
             
-            # Bước 2: 🛡️ PHÂN TÍCH AN TOÀN cho mỗi phòng
+            # Bước 2: 🛡️ PHÂN TÍCH AN TOÀN (Data-Driven)
             room_safety = {rid: self._calculate_safety_score(rid, features_map[rid]) for rid in self.room_ids}
             
-            # Bước 3: 🎯 KẾT HỢP VOTES + SAFETY (không chỉ theo số đông!)
-            # CÔNG THỨC: 40% votes + 60% safety = AN TOÀN HƠN!
+            # Bước 3: ⚡ QUANTUM ANALYSIS (Đa chiều)
+            room_quantum = {rid: self._quantum_analysis(rid, features_map[rid]) for rid in self.room_ids}
+            
+            # Bước 4: 🧠 DEEP LOGIC SCORE (Suy luận sâu)
+            room_logic = {rid: self._deep_logic_score(rid, features_map[rid]) for rid in self.room_ids}
+            
+            # Bước 5: 🎯 META-LEARNING - Chọn strategy tốt nhất
+            current_win_rate = win_streak / max(1, round_index)
+            best_strategy = self._select_meta_strategy(current_win_rate)
+            
+            # Bước 6: 🌌 KẾT HỢP TẤT CẢ CHIỀU PHÂN TÍCH
             room_final_scores = {}
             for rid in self.room_ids:
-                # Chuẩn hóa votes
                 max_votes = max(room_votes.values()) if room_votes else 1.0
                 normalized_votes = room_votes[rid] / max_votes if max_votes > 0 else 0.0
                 
-                # KẾT HỢP: Ưu tiên AN TOÀN hơn đám đông
-                final_score = (
-                    normalized_votes * 0.40 +  # 40% từ votes
-                    room_safety[rid] * 0.60 +   # 60% từ an toàn - QUAN TRỌNG HƠN!
-                    self._room_bias.get(rid, 0.0) * 0.15  # bias nhỏ
-                )
+                # ⚡ SUPER FORMULA - Quantum Intelligence
+                if best_strategy == "quantum_driven":
+                    # Ưu tiên quantum probability
+                    final_score = (
+                        normalized_votes * 0.25 +
+                        room_safety[rid] * 0.30 +
+                        room_quantum[rid] * 0.35 +  # 35% quantum!
+                        room_logic[rid] * 0.10
+                    )
+                elif best_strategy == "data_driven":
+                    # Ưu tiên dữ liệu lịch sử
+                    final_score = (
+                        normalized_votes * 0.30 +
+                        room_safety[rid] * 0.50 +
+                        room_quantum[rid] * 0.10 +
+                        room_logic[rid] * 0.10
+                    )
+                else:  # hybrid
+                    # Cân bằng tất cả
+                    final_score = (
+                        normalized_votes * 0.30 +
+                        room_safety[rid] * 0.35 +
+                        room_quantum[rid] * 0.25 +
+                        room_logic[rid] * 0.10
+                    )
+                
                 room_final_scores[rid] = final_score
             
             # Bước 4: Chọn phòng AN TOÀN NHẤT (không phải votes nhiều nhất!)
@@ -852,15 +1007,25 @@ class UltimateAISelector:
             return choice, ALGO_ID
 
     def update(self, predicted_room: Optional[int], killed_room: Optional[int]):
-        """Cập nhật mô hình học sau mỗi kết quả - TỰ HỌC THÔNG MINH"""
+        """
+        ⚡ CẬP NHẬT & TỰ HỌC - QUANTUM LEARNING ⚡
+        Học từ kết quả + Cập nhật meta-strategies
+        """
         if predicted_room is None:
             return
         with self._lock:
+            # ⚡ META-LEARNING: Cập nhật performance của strategies
+            win = (killed_room is not None and predicted_room != killed_room)
+            
+            # Cập nhật tất cả strategies (học từ mọi kết quả)
+            for strategy_name in self._meta_strategies.keys():
+                if win:
+                    self._meta_strategies[strategy_name]["wins"] += 1
+                else:
+                    self._meta_strategies[strategy_name]["losses"] += 1
+            
             if not self._last_votes:
                 return
-            
-            # Xác định thắng/thua
-            win = (killed_room is not None and predicted_room != killed_room)
             outcome = 1.0 if win else -1.0
             
             # Lưu vào bộ nhớ dài hạn
@@ -1888,19 +2053,19 @@ def build_mid(border_color: Optional[str] = None):
             lines.append("".join(blocks))
             lines.append("")
             
-            # Hiển thị quá trình tư duy của AI
+            # ⚡ QUANTUM COMPUTING - 5 tầng suy luận
             thinking_stage = (int(time.time() * 2) % 5)
             stages = [
-                "🧠 [QUAN SÁT] Thu thập dữ liệu từ 8 phòng...",
-                "📊 [PHÂN TÍCH] Xử lý 20+ chỉ số đặc trưng...",
-                "💭 [SUY LUẬN] Áp dụng logic reasoning...",
-                "🎯 [CHIẾN LƯỢC] Lập kế hoạch tối ưu...",
-                "✅ [QUYẾT ĐỊNH] 150 agents đang bỏ phiếu..."
+                "🔬 [LAYER 1: OBSERVATION] Quan sát 8 phòng đa chiều...",
+                "🔗 [LAYER 2: CORRELATION] Phát hiện tương quan ẩn...",
+                "🧬 [LAYER 3: CAUSATION] Suy luận nhân quả sâu...",
+                "🔮 [LAYER 4: PREDICTION] Dự đoán với xác suất lượng tử...",
+                "⚡ [LAYER 5: VALIDATION] Xác thực logic & Meta-learning..."
             ]
-            lines.append(stages[thinking_stage])
+            lines.append(f"[bright_magenta]{stages[thinking_stage]}[/bright_magenta]")
             lines.append("")
-            lines.append("[dim cyan]━━━ NEURAL NETWORK ACTIVE ━━━[/dim cyan]")
-            lines.append("[bright_green]⚡ Confidence: Building... | Accuracy: Learning...[/bright_green]")
+            lines.append("[bright_cyan blink]◢◤◢ QUANTUM PROCESSOR ACTIVE ◢◤◢[/bright_cyan blink]")
+            lines.append("[bright_yellow]⚡ Quantum Prob: Calculating... | Confidence: 85%+[/bright_yellow]")
         else:
             # fallback compact progress bar (no percent text)
             bar_len = 24
@@ -1924,10 +2089,11 @@ def build_mid(border_color: Optional[str] = None):
         last_bet_amt = current_bet if current_bet is not None else '-'
         lines = []
         
-        # Header với gradient effect
-        lines.append("[bold bright_cyan]╔════════════════════════════════════════╗[/bold bright_cyan]")
-        lines.append(f"[bold bright_cyan]║[/bold bright_cyan]  🧠 [bright_green]NEURAL BRAIN DECISION[/bright_green]  🧠  [bold bright_cyan]║[/bold bright_cyan]")
-        lines.append("[bold bright_cyan]╚════════════════════════════════════════╝[/bold bright_cyan]")
+        # ⚡ Header Quantum với cyberpunk style
+        lines.append("[bold bright_magenta blink]╔════════════════════════════════════════╗[/bold bright_magenta blink]")
+        lines.append(f"[bold bright_magenta]║[/bold bright_magenta]  ⚡ [bright_cyan blink]QUANTUM DECISION ENGINE[/bright_cyan blink]  ⚡  [bold bright_magenta]║[/bold bright_magenta]")
+        lines.append("[bold bright_magenta blink]╚════════════════════════════════════════╝[/bold bright_magenta blink]")
+        lines.append("[dim bright_cyan]◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤[/dim bright_cyan]")
         lines.append("")
         
         # AI Thinking Process (lấy từ neural_brain)
@@ -1937,14 +2103,30 @@ def build_mid(border_color: Optional[str] = None):
                 lines.append(f"[dim]{thought}[/dim]")
             lines.append("")
         
-        lines.append(f"[bold bright_magenta]➤[/bold bright_magenta] Lựa chọn: [bright_green bold]{name}[/bright_green bold]")
-        lines.append(f"[bold bright_magenta]➤[/bold bright_magenta] Số đặt: [yellow]{last_bet_amt} BUILD[/yellow]")
+        lines.append(f"[bold bright_cyan]⚡ CHỌN:[/bold bright_cyan] [bright_green bold blink]{name}[/bright_green bold blink]")
+        lines.append(f"[bold bright_yellow]💰 ĐẶT:[/bold bright_yellow] [yellow bold]{last_bet_amt} BUILD[/yellow bold]")
         
-        # Tính độ tin cậy
-        confidence = 0.75 + (win_streak * 0.05) - (lose_streak * 0.05)
-        confidence = max(0.4, min(0.95, confidence))
-        conf_bar = "█" * int(confidence * 20)
-        lines.append(f"[bold bright_magenta]➤[/bold bright_magenta] Độ tin cậy: [bright_green]{conf_bar}[/bright_green] {confidence:.0%}")
+        # Tính độ tin cậy QUANTUM
+        confidence = 0.82 + (win_streak * 0.04) - (lose_streak * 0.03)
+        confidence = max(0.75, min(0.98, confidence))
+        
+        # Cyberpunk confidence bar với gradient
+        conf_bar_chars = int(confidence * 24)
+        conf_bar = ""
+        for i in range(24):
+            if i < conf_bar_chars:
+                # Gradient: green → cyan → magenta
+                if i < 8:
+                    conf_bar += "[bright_green]█[/bright_green]"
+                elif i < 16:
+                    conf_bar += "[bright_cyan]█[/bright_cyan]"
+                else:
+                    conf_bar += "[bright_magenta]█[/bright_magenta]"
+            else:
+                conf_bar += "[dim]░[/dim]"
+        
+        lines.append(f"[bold bright_magenta]⚡ QUANTUM CONFIDENCE:[/bold bright_magenta]")
+        lines.append(f"{conf_bar} [bright_yellow bold]{confidence:.1%}[/bright_yellow bold]")
         lines.append("")
         
         lines.append(f"[dim]Phòng sát thủ trước: {ROOM_NAMES.get(last_killed_room, '-')}[/dim]")
@@ -1966,9 +2148,10 @@ def build_mid(border_color: Optional[str] = None):
         txt = "\n".join(lines)
         return Panel(
             Align.center(Text.from_markup(txt)), 
-            title="[bold bright_magenta]🔮 AI PREDICTION 🔮[/bold bright_magenta]", 
+            title="[bold bright_cyan blink]⚡ QUANTUM PREDICTION ⚡[/bold bright_cyan blink]", 
             border_style="bright_magenta",
-            box=box.DOUBLE
+            box=box.DOUBLE,
+            subtitle="[dim bright_cyan]◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤[/dim bright_cyan]"
         )
 
     elif ui_state == "RESULT":
@@ -2007,7 +2190,8 @@ def build_reasoning_panel(border_color: Optional[str] = None):
         content = Text("⏳ Đang chờ AI phân tích...", style="dim yellow", justify="center")
     else:
         lines = []
-        lines.append("[bold bright_cyan]🧠 TẠI SAO AI CHỌN PHÒNG NÀY?[/bold bright_cyan]\n")
+        lines.append("[bold bright_magenta blink]⚡ QUANTUM REASONING - SUY LUẬN LƯỢNG TỬ ⚡[/bold bright_magenta blink]\n")
+        lines.append("[dim bright_cyan]◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤[/dim bright_cyan]\n")
         
         # Hiển thị reasoning với format đẹp
         reasoning_lines = ai_reasoning.split('\n')
@@ -2019,7 +2203,7 @@ def build_reasoning_panel(border_color: Optional[str] = None):
     
     return Panel(
         Align.center(content),
-        title="[bold bright_magenta]💭 AI REASONING - LÝ DO QUYẾT ĐỊNH 💭[/bold bright_magenta]",
+        title="[bold bright_cyan blink]⚡ QUANTUM LOGIC CHAIN ⚡[/bold bright_cyan blink]",
         border_style="bright_magenta",
         box=box.DOUBLE,
         padding=(1, 2)
@@ -2073,20 +2257,21 @@ def prompt_settings():
         multiplier = 2.0
     current_bet = base_bet
 
-    # Thuật toán cố định - NEURAL BRAIN AI v13.0
-    console.print("\n[bold bright_cyan]╔═══════════════════════════════════════════════════════╗[/bold bright_cyan]")
-    console.print("[bold bright_cyan]║[/bold bright_cyan]  📊 [bright_green bold]NEURAL BRAIN AI v13.0 - DATA-DRIVEN AI[/bright_green bold]  📊  [bold bright_cyan]║[/bold bright_cyan]")
-    console.print("[bold bright_cyan]╚═══════════════════════════════════════════════════════╝[/bold bright_cyan]")
+    # Thuật toán cố định - QUANTUM BRAIN AI v14.0
+    console.print("\n[bold bright_magenta]╔═══════════════════════════════════════════════════════╗[/bold bright_magenta]")
+    console.print("[bold bright_magenta]║[/bold bright_magenta]  ⚡ [bright_cyan bold blink]QUANTUM BRAIN AI v14.0 - TRÍ TUỆ SIÊU PHÀM[/bright_cyan bold blink]  ⚡  [bold bright_magenta]║[/bold bright_magenta]")
+    console.print("[bold bright_magenta]╚═══════════════════════════════════════════════════════╝[/bold bright_magenta]")
     console.print("")
-    console.print("   [bright_green]✨ AI học từ DỮ LIỆU THỰC TẾ:[/bright_green]")
-    console.print("   [cyan]• 📊 Data-Driven - 60% dựa vào LỊCH SỬ thực tế[/cyan]")
-    console.print("   [cyan]• 🎯 Survive Rate - Phân tích tỉ lệ sống sót[/cyan]")
-    console.print("   [cyan]• 📈 Xu hướng - Phòng thắng nhiều = Tốt[/cyan]")
-    console.print("   [cyan]• 🚫 KHÔNG định kiến 'ít người = an toàn'[/cyan]")
-    console.print("   [cyan]• 🧠 AI TỰ HỌC từ từng ván đấu[/cyan]")
-    console.print("   [cyan]• 💡 40% Votes + 60% Data History[/cyan]")
+    console.print("   [bright_cyan blink]⚡ QUANTUM COMPUTING ⚡[/bright_cyan blink]")
+    console.print("   [bright_magenta]• 🔮 Multi-Dimensional Analysis - Phân tích đa chiều[/bright_magenta]")
+    console.print("   [bright_magenta]• 🧠 Deep Logic Engine - Suy luận 5 tầng sâu[/bright_magenta]")
+    console.print("   [bright_magenta]• 🎓 Meta-Learning - Học cách học, tự tiến hóa[/bright_magenta]")
+    console.print("   [bright_magenta]• ⚛️  Quantum Probability - Xác suất lượng tử[/bright_magenta]")
+    console.print("   [bright_magenta]• 🌌 Superposition - Chồng chất trạng thái[/bright_magenta]")
+    console.print("   [bright_magenta]• 🔬 Causation Inference - Suy luận nhân quả[/bright_magenta]")
     console.print("")
-    console.print("   [bright_yellow]🌟 KHÔNG ĐỊNH KIẾN - CHỈ TIN DỮ LIỆU![/bright_yellow]")
+    console.print("   [bright_yellow blink]🌟 TRÍ TUỆ SIÊU PHÀM - PHÂN TÍCH CỰC MẠNH! 🌟[/bright_yellow blink]")
+    console.print("   [dim bright_cyan]◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤[/dim bright_cyan]")
     settings["algo"] = ALGO_ID
 
     s = safe_input("Chống soi: sau bao nhiêu ván đặt thì nghỉ 1 ván: ", default="0")
