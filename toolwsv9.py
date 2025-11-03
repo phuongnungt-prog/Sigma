@@ -239,6 +239,46 @@ def safe_input(prompt: str, default=None, cast=None):
             return default
     return s
 
+# -------------------- STOP CONDITIONS CHECK --------------------
+
+def _check_stop_profit_loss():
+    """
+    ✅ CHECK STOP-LOSS VÀ TAKE-PROFIT
+    Hàm này được gọi MỖI KHI balance update để đảm bảo dừng kịp thời!
+    """
+    global stop_flag
+    
+    try:
+        # Check take-profit
+        if stop_when_profit_reached and profit_target is not None:
+            if cumulative_profit >= profit_target:
+                console.print(f"\n[bold green]🎉 MỤC TIÊU LÃI ĐẠT: {cumulative_profit:+.2f} >= {profit_target}[/bold green]")
+                console.print(f"[green]Số dư hiện tại: {current_build:.2f} BUILD (Bắt đầu: {starting_balance:.2f})[/green]")
+                console.print(f"[green]Tổng lãi: +{cumulative_profit:.2f} BUILD ✅[/green]")
+                stop_flag = True
+                try:
+                    wsobj = _ws.get("ws")
+                    if wsobj:
+                        wsobj.close()
+                except Exception:
+                    pass
+        
+        # Check stop-loss
+        if stop_when_loss_reached and stop_loss_target is not None:
+            if cumulative_profit <= -abs(stop_loss_target):
+                console.print(f"\n[bold red]⚠️ STOP-LOSS TRIGGERED: Lỗ {cumulative_profit:.2f} >= {stop_loss_target}[/bold red]")
+                console.print(f"[red]Số dư hiện tại: {current_build:.2f} BUILD (Bắt đầu: {starting_balance:.2f})[/red]")
+                console.print(f"[red]Tổng lỗ: {cumulative_profit:.2f} BUILD ❌[/red]")
+                stop_flag = True
+                try:
+                    wsobj = _ws.get("ws")
+                    if wsobj:
+                        wsobj.close()
+                except Exception:
+                    pass
+    except Exception as e:
+        log_debug(f"_check_stop_profit_loss error: {e}")
+
 # -------------------- BALANCE PARSING & FETCH --------------------
 
 def _parse_balance_from_json(j: Dict[str, Any]) -> Tuple[Optional[float], Optional[float], Optional[float]]:
@@ -355,6 +395,10 @@ def fetch_balances_3games(retries=2, timeout=6, params=None, uid=None, secret=No
                         cumulative_profit += delta
                         last_balance_val = build
                 current_build = build
+                
+                # ✅ CHECK STOP CONDITIONS NGAY SAU KHI UPDATE BALANCE
+                _check_stop_profit_loss()
+                
             if usdt is not None:
                 current_usdt = usdt
             if world is not None:
@@ -1628,38 +1672,9 @@ def on_message(ws, message):
                 threading.Thread(target=_background_fetch_balance_after_result, daemon=True).start()
 
             ui_state = "RESULT"
-
-            # check profit target or stop-loss after we fetched balances (balance fetch may set current_build)
-            def _check_stop_conditions():
-                global stop_flag
-                try:
-                    # FIX: So sánh lãi/lỗ (cumulative_profit) thay vì số dư (current_build)
-                    if stop_when_profit_reached and profit_target is not None and cumulative_profit >= profit_target:
-                        console.print(f"[bold green]🎉 MỤC TIÊU LÃI ĐẠT: {cumulative_profit:+.2f} >= {profit_target}. Dừng tool.[/bold green]")
-                        console.print(f"[green]Số dư hiện tại: {current_build:.2f} BUILD[/green]")
-                        stop_flag = True
-                        try:
-                            wsobj = _ws.get("ws")
-                            if wsobj:
-                                wsobj.close()
-                        except Exception:
-                            pass
-                    
-                    # FIX: So sánh lãi/lỗ (cumulative_profit) thay vì số dư
-                    if stop_when_loss_reached and stop_loss_target is not None and cumulative_profit <= -abs(stop_loss_target):
-                        console.print(f"[bold red]⚠️ STOP-LOSS TRIGGERED: Lỗ {cumulative_profit:.2f} >= {stop_loss_target}. Dừng tool.[/bold red]")
-                        console.print(f"[red]Số dư hiện tại: {current_build:.2f} BUILD (Bắt đầu: {starting_balance:.2f})[/red]")
-                        stop_flag = True
-                        try:
-                            wsobj = _ws.get("ws")
-                            if wsobj:
-                                wsobj.close()
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
-            # run check slightly delayed to allow balance refresh thread update
-            threading.Timer(1.2, _check_stop_conditions).start()
+            
+            # ✅ Check stop ngay lập tức (không cần delay vì balance đã update trong fetch)
+            _check_stop_profit_loss()
 
     except Exception as e:
         log_debug(f"on_message err: {e}")
