@@ -22,8 +22,8 @@ def show_banner():
     """
     
     title = Text()
-    title.append("🛡️ NEURAL BRAIN AI v12.0 🛡️\n", style="bold bright_cyan")
-    title.append("AN TOÀN ƯU TIÊN - KHÔNG THEO ĐÁM ĐÔNG", style="bright_green")
+    title.append("📊 NEURAL BRAIN AI v13.0 📊\n", style="bold bright_cyan")
+    title.append("HỌC TỪ DỮ LIỆU THỰC TẾ - KHÔNG ĐỊNH KIẾN", style="bright_green")
     
     console.print(Panel(
         Text.from_markup(f"[dim cyan]{brain_art}[/dim cyan]\n") + title,
@@ -183,9 +183,9 @@ SELECTION_CONFIG = {
 }
 
 # selection mode duy nhất - NEURAL BRAIN AI v12.0
-ALGO_ID = "NEURAL_BRAIN_AI_v12_SAFETY_FIRST"
+ALGO_ID = "NEURAL_BRAIN_AI_v13_DATA_DRIVEN"
 SELECTION_MODES = {
-    ALGO_ID: "🛡️ Neural Brain AI v12.0 - An Toàn Ưu Tiên (KHÔNG Theo Đám Đông)"
+    ALGO_ID: "📊 Neural Brain AI v13.0 - Dựa Trên Dữ Liệu Thực Tế (Data-Driven AI)"
 }
 
 settings = {"algo": ALGO_ID}
@@ -636,42 +636,101 @@ class UltimateAISelector:
 
     def _calculate_safety_score(self, rid: int, features: Dict[str, float]) -> float:
         """
-        🛡️ PHÂN TÍCH MỨC ĐỘ AN TOÀN - KHÔNG CHỈ THEO ĐÁM ĐÔNG!
-        Điểm an toàn cao = rủi ro thấp
+        🛡️ PHÂN TÍCH AN TOÀN DỰA TRÊN DỮ LIỆU THỰC TẾ - KHÔNG ĐỊNH KIẾN!
+        AI học từ lịch sử, không phán đoán trước "ít người = an toàn"
         """
-        # 1. Phòng ít người/ít cược = AN TOÀN hơn
-        safety_crowd = features.get("players_norm", 0.5) * 0.25  # 25% trọng số
-        safety_bet = features.get("bet_norm", 0.5) * 0.20  # 20% trọng số
+        stats = room_stats.get(rid, {})
         
-        # 2. Phòng ổn định, ít biến động = AN TOÀN
-        safety_stable = features.get("stability_score", 0.5) * 0.30  # 30% trọng số - QUAN TRỌNG!
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        # 1️⃣ DỮ LIỆU THỰC TẾ: Tỉ lệ sống sót trong lịch sử (60% - QUAN TRỌNG NHẤT!)
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        kills = float(stats.get("kills", 0) or 0)
+        survives = float(stats.get("survives", 0) or 0)
+        total_history = kills + survives
         
-        # 3. Tỉ lệ sống sót cao = AN TOÀN
-        safety_survive = features.get("survive_score", 0.5) * 0.25  # 25% trọng số
+        if total_history >= 10:
+            # Có đủ dữ liệu lịch sử -> TIN DỮ LIỆU
+            actual_survive_rate = survives / total_history
+            safety_history = actual_survive_rate * 0.60  # 60% - TRỌNG SỐ CHÍNH!
+        elif total_history >= 3:
+            # Ít dữ liệu -> giảm độ tin cậy
+            actual_survive_rate = survives / total_history
+            safety_history = actual_survive_rate * 0.40  # Giảm trọng số
+        else:
+            # Chưa có dữ liệu -> trung lập
+            safety_history = 0.25  # Trung lập, chờ học
         
-        # 4. PHÁ BẪY: Phòng nhiều người đột ngột = NGUY HIỂM
-        pressure = features.get("pressure_score", 0.0)
-        trap_penalty = -abs(pressure) * 0.4 if pressure > 0.6 else 0.0
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        # 2️⃣ ỔN ĐỊNH: Phòng ít biến động = Dự đoán được (20%)
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        stability = features.get("stability_score", 0.5)
+        safety_stable = stability * 0.20
         
-        # 5. PHÁ BẪY: Phòng đang hot đột biến = NGUY HIỂM
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        # 3️⃣ XU HƯỚNG GẦN ĐÂY: Thắng nhiều gần đây = Tốt (15%)
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        # Phân tích 10 ván gần nhất
+        recent_survive_count = 0
+        recent_kill_count = 0
+        for rec in list(self._recent_outcomes)[-10:]:
+            if rec.get("predicted") == rid:
+                if rec.get("win"):
+                    recent_survive_count += 1
+                else:
+                    recent_kill_count += 1
+        
+        recent_total = recent_survive_count + recent_kill_count
+        if recent_total >= 3:
+            recent_rate = recent_survive_count / recent_total
+            safety_recent = recent_rate * 0.15
+        else:
+            safety_recent = 0.075  # Trung lập
+        
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        # 4️⃣ PENALTY: Các yếu tố NGUY HIỂM
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        
+        # Vừa bị kill = NGUY HIỂM cao
+        if last_killed_room == rid:
+            last_kill_penalty = -0.5
+        else:
+            last_kill_penalty = 0.0
+        
+        # Pattern giết liên tục
+        pattern = self._pattern_detector.get(rid, [])
+        if len(pattern) >= 5:
+            recent_pattern = pattern[-5:]
+            kills_in_pattern = sum(1 for x in recent_pattern if x == 1)
+            if kills_in_pattern >= 3:  # 3/5 ván bị kill
+                pattern_penalty = -0.2
+            else:
+                pattern_penalty = 0.0
+        else:
+            pattern_penalty = 0.0
+        
+        # Momentum tăng đột biến (có thể là bẫy)
         momentum = features.get("momentum_players", 0.0)
-        rush_penalty = -abs(momentum) * 0.35 if momentum > 0.5 else 0.0
+        if momentum > 0.7:  # Tăng RẤT mạnh
+            rush_penalty = -0.15
+        elif momentum > 0.5:
+            rush_penalty = -0.08
+        else:
+            rush_penalty = 0.0
         
-        # 6. Tránh phòng vừa kill
-        last_kill_penalty = -1.0 if last_killed_room == rid else 0.0
-        
-        # 7. Phòng có pattern giết liên tục = NGUY HIỂM
-        pattern = features.get("pattern_score", 0.0)
-        pattern_penalty = pattern * 0.5 if pattern < 0 else 0.0
-        
-        # TỔNG HỢP: Điểm an toàn tổng thể
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        # 🎯 TỔNG HỢP: Ưu tiên DỮ LIỆU thực tế
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         total_safety = (
-            safety_crowd + safety_bet + safety_stable + safety_survive +
-            trap_penalty + rush_penalty + last_kill_penalty + pattern_penalty
+            safety_history +      # 60% hoặc 40% - DỮ LIỆU THỰC TẾ
+            safety_stable +       # 20% - Ổn định
+            safety_recent +       # 15% - Xu hướng gần
+            last_kill_penalty +   # -0.5 nếu vừa kill
+            pattern_penalty +     # -0.2 nếu pattern xấu
+            rush_penalty          # -0.15 nếu momentum cao
         )
         
         # Chuẩn hóa về [0, 1]
-        return self._clip((total_safety + 1.0) / 2.0, 0.0, 1.0)
+        return self._clip(total_safety, 0.0, 1.0)
     
     def select_room(self) -> Tuple[int, str]:
         """
@@ -717,15 +776,34 @@ class UltimateAISelector:
             ranked = sorted(room_final_scores.items(), key=lambda kv: (-kv[1], kv[0]))
             choice = ranked[0][0]
             
-            # Log chi tiết để debug
+            # Log chi tiết để debug với DỮ LIỆU THỰC TẾ
             vote_winner = max(room_votes.items(), key=lambda kv: kv[1])[0]
             safety_winner = max(room_safety.items(), key=lambda kv: kv[1])[0]
             
-            log_debug(f"🗳️  Votes nhiều nhất: Phòng {vote_winner} ({room_votes[vote_winner]:.1f} votes)")
-            log_debug(f"🛡️  An toàn nhất: Phòng {safety_winner} (Safety: {room_safety[safety_winner]:.2%})")
+            # Hiển thị thống kê thực tế
+            for rid in self.room_ids:
+                stats = room_stats.get(rid, {})
+                kills = stats.get("kills", 0)
+                survives = stats.get("survives", 0)
+                total = kills + survives
+                survive_rate = (survives / total * 100) if total > 0 else 0
+                
+                log_debug(f"📊 Phòng {rid}: {survives}W/{kills}L ({survive_rate:.0f}% survive) | "
+                         f"Votes: {room_votes[rid]:.0f} | Safety: {room_safety[rid]:.2f} | Final: {room_final_scores[rid]:.3f}")
+            
+            log_debug(f"\n🗳️  Votes nhiều nhất: Phòng {vote_winner}")
+            log_debug(f"🛡️  An toàn nhất (theo dữ liệu): Phòng {safety_winner} ({room_safety[safety_winner]:.1%})")
             log_debug(f"🎯 QUYẾT ĐỊNH CUỐI: Phòng {choice} (Score: {room_final_scores[choice]:.3f})")
+            
+            choice_stats = room_stats.get(choice, {})
+            choice_k = choice_stats.get("kills", 0)
+            choice_s = choice_stats.get("survives", 0)
+            choice_total = choice_k + choice_s
+            if choice_total > 0:
+                log_debug(f"📈 Lịch sử phòng {choice}: {choice_s} thắng / {choice_k} thua ({choice_s/(choice_total)*100:.0f}% survive)")
+            
             if choice != vote_winner:
-                log_debug(f"⚠️  KHÔNG THEO ĐÁM ĐÔNG! Chọn an toàn thay vì theo số đông")
+                log_debug(f"⚠️  AI KHÔNG THEO ĐÁM ĐÔNG - Dựa vào dữ liệu thực tế!")
             
             return choice, ALGO_ID
 
@@ -956,39 +1034,55 @@ class NeuralBrain:
             if max_bet > 12000:
                 logic_rules.append(f"⚠️ CẢNH BÁO: Phòng {high_bet_room[0]} cược quá cao ({max_bet:,.0f}) - RỦI RO CAO!")
         
-        # Rule 3: ✅ PHÂN TÍCH PHÒNG ĐƯỢC CHỌN
+        # Rule 3: ✅ PHÂN TÍCH PHÒNG ĐƯỢC CHỌN DỰA TRÊN DỮ LIỆU
         if recommended and recommended in room_data:
             rec_data = room_data[recommended]
             players = rec_data.get("players", 0)
             bet = rec_data.get("bet", 0)
             
-            # Đánh giá mức độ an toàn
-            safety_level = "🟢 AN TOÀN"
-            if players < 10:
-                safety_level = "🟢 RẤT AN TOÀN"
-            elif players < 20:
-                safety_level = "🟡 KHÁ AN TOÀN"
-            elif players < 30:
-                safety_level = "🟠 TRUNG BÌNH"
+            # Lấy THỐNG KÊ THỰC TẾ từ lịch sử
+            stats = room_stats.get(recommended, {})
+            kills = stats.get("kills", 0)
+            survives = stats.get("survives", 0)
+            total_history = kills + survives
+            
+            # Đánh giá mức độ an toàn DỰA TRÊN DỮ LIỆU
+            if total_history >= 5:
+                survive_rate = survives / total_history
+                if survive_rate >= 0.70:
+                    safety_level = f"🟢 RẤT AN TOÀN ({survives}W/{kills}L = {survive_rate:.0%})"
+                elif survive_rate >= 0.55:
+                    safety_level = f"🟡 KHÁ AN TOÀN ({survives}W/{kills}L = {survive_rate:.0%})"
+                elif survive_rate >= 0.40:
+                    safety_level = f"🟠 TRUNG BÌNH ({survives}W/{kills}L = {survive_rate:.0%})"
+                else:
+                    safety_level = f"🔴 RỦI RO ({survives}W/{kills}L = {survive_rate:.0%})"
             else:
-                safety_level = "🔴 RỦI RO"
+                safety_level = f"⚪ CHƯA ĐỦ DỮ LIỆU ({survives}W/{kills}L)"
             
             logic_rules.append(f"{safety_level} | Phòng {recommended}: {players} người, {bet:,.0f} BUILD")
             
-            # Rule 4: So sánh với đám đông
+            # Rule 4: So sánh DỮ LIỆU THỰC TẾ với các phòng khác
             other_rooms = [r for r in room_data if r != recommended]
-            if other_rooms:
-                avg_players = sum(room_data[r].get("players", 0) for r in other_rooms) / len(other_rooms)
-                avg_bet = sum(room_data[r].get("bet", 0) for r in other_rooms) / len(other_rooms)
+            if other_rooms and total_history >= 3:
+                # So sánh tỉ lệ survive với các phòng khác
+                other_survive_rates = []
+                for r in other_rooms:
+                    r_stats = room_stats.get(r, {})
+                    r_k = r_stats.get("kills", 0)
+                    r_s = r_stats.get("survives", 0)
+                    r_total = r_k + r_s
+                    if r_total >= 3:
+                        other_survive_rates.append(r_s / r_total)
                 
-                # PHÁ BẪY: Nếu chọn phòng khác với đám đông
-                if players < avg_players * 0.7:
-                    logic_rules.append(f"💡 KHÔNG THEO ĐÁM ĐÔNG: {players} người < TB {avg_players:.0f} người")
-                elif players > avg_players * 1.5:
-                    logic_rules.append(f"⚠️ THEO ĐÁM ĐÔNG: {players} người > TB {avg_players:.0f} người - NGUY HIỂM!")
-                
-                if bet < avg_bet * 0.7:
-                    logic_rules.append(f"✅ Cược thấp hơn TB: {bet:,.0f} < {avg_bet:,.0f} BUILD")
+                if other_survive_rates:
+                    avg_survive = sum(other_survive_rates) / len(other_survive_rates)
+                    if survive_rate > avg_survive + 0.15:
+                        logic_rules.append(f"✅ AN TOÀN HƠN TB: {survive_rate:.0%} > {avg_survive:.0%} (dữ liệu thực tế)")
+                    elif survive_rate < avg_survive - 0.15:
+                        logic_rules.append(f"⚠️ NGUY HIỂM HƠN TB: {survive_rate:.0%} < {avg_survive:.0%} (dữ liệu thực tế)")
+                    else:
+                        logic_rules.append(f"📊 Ngang TB: {survive_rate:.0%} ≈ {avg_survive:.0%}")
         
         # Rule 5: Phân tích xu hướng
         if situation.get("win_streak", 0) >= 3:
@@ -1964,20 +2058,20 @@ def prompt_settings():
         multiplier = 2.0
     current_bet = base_bet
 
-    # Thuật toán cố định - NEURAL BRAIN AI v12.0
+    # Thuật toán cố định - NEURAL BRAIN AI v13.0
     console.print("\n[bold bright_cyan]╔═══════════════════════════════════════════════════════╗[/bold bright_cyan]")
-    console.print("[bold bright_cyan]║[/bold bright_cyan]  🛡️ [bright_green bold]NEURAL BRAIN AI v12.0 - AN TOÀN ƯU TIÊN[/bright_green bold]  🛡️  [bold bright_cyan]║[/bold bright_cyan]")
+    console.print("[bold bright_cyan]║[/bold bright_cyan]  📊 [bright_green bold]NEURAL BRAIN AI v13.0 - DATA-DRIVEN AI[/bright_green bold]  📊  [bold bright_cyan]║[/bold bright_cyan]")
     console.print("[bold bright_cyan]╚═══════════════════════════════════════════════════════╝[/bold bright_cyan]")
     console.print("")
-    console.print("   [bright_green]✨ Đặc điểm mới:[/bright_green]")
-    console.print("   [cyan]• 🛡️ Safety First - An toàn ưu tiên số 1[/cyan]")
-    console.print("   [cyan]• 🚫 Anti-Crowd - KHÔNG theo đám đông mù quáng[/cyan]")
-    console.print("   [cyan]• 🎯 Risk Analysis - Phân tích rủi ro thông minh[/cyan]")
-    console.print("   [cyan]• 💡 Trap Detection - Phát hiện & tránh bẫy[/cyan]")
-    console.print("   [cyan]• 📊 40% Votes + 60% Safety = SMART CHOICE[/cyan]")
-    console.print("   [cyan]• 🧠 150 AI Agents + Logic Reasoning[/cyan]")
+    console.print("   [bright_green]✨ AI học từ DỮ LIỆU THỰC TẾ:[/bright_green]")
+    console.print("   [cyan]• 📊 Data-Driven - 60% dựa vào LỊCH SỬ thực tế[/cyan]")
+    console.print("   [cyan]• 🎯 Survive Rate - Phân tích tỉ lệ sống sót[/cyan]")
+    console.print("   [cyan]• 📈 Xu hướng - Phòng thắng nhiều = Tốt[/cyan]")
+    console.print("   [cyan]• 🚫 KHÔNG định kiến 'ít người = an toàn'[/cyan]")
+    console.print("   [cyan]• 🧠 AI TỰ HỌC từ từng ván đấu[/cyan]")
+    console.print("   [cyan]• 💡 40% Votes + 60% Data History[/cyan]")
     console.print("")
-    console.print("   [bright_yellow]🌟 PHÂN TÍCH AN TOÀN, KHÔNG CHỈ THEO SỐ ĐÔNG![/bright_yellow]")
+    console.print("   [bright_yellow]🌟 KHÔNG ĐỊNH KIẾN - CHỈ TIN DỮ LIỆU![/bright_yellow]")
     settings["algo"] = ALGO_ID
 
     s = safe_input("Chống soi: sau bao nhiêu ván đặt thì nghỉ 1 ván: ", default="0")
