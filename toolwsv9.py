@@ -239,6 +239,20 @@ def human_ts() -> str:
     return datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
 
 
+def clear_terminal():
+    """
+    🧹 Clear terminal
+    """
+    import os
+    import platform
+    
+    # Clear command tùy OS
+    if platform.system() == "Windows":
+        os.system('cls')
+    else:
+        os.system('clear')
+
+
 def safe_input(prompt: str, default=None, cast=None):
     try:
         s = input(prompt).strip()
@@ -2317,6 +2331,36 @@ def prompt_settings():
     except Exception:
         stop_loss_target = None
         stop_when_loss_reached = False
+    
+    console.print("")
+    console.print("╔═══════════════════════════════════════════════════════════╗", style="bright_green")
+    console.print("║  ✅ CẤU HÌNH HOÀN TẤT!                                     ║", style="bright_green")
+    console.print("╚═══════════════════════════════════════════════════════════╝", style="bright_green")
+    console.print("")
+    
+    # Animation trước khi clear
+    import time
+    with console.status("[bold bright_cyan]⚡ Đang khởi tạo Quantum Brain AI...[/bold bright_cyan]", spinner="dots"):
+        time.sleep(1.5)
+    
+    # Clear terminal sau khi config xong
+    clear_terminal()
+    
+    # Show startup banner
+    console.print("╔═══════════════════════════════════════════════════════════╗", style="bright_magenta")
+    console.print("║  ⚡ QUANTUM BRAIN AI v14.1 - ĐANG HOẠT ĐỘNG ⚡            ║", style="bright_magenta")
+    console.print("╚═══════════════════════════════════════════════════════════╝", style="bright_magenta")
+    console.print(Align.center(Text("◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤", style="dim bright_cyan")))
+    console.print("")
+    console.print(f"[bright_cyan]💰 Base Bet:[/bright_cyan] [yellow]{base_bet} BUILD[/yellow]")
+    console.print(f"[bright_cyan]📈 Multiplier:[/bright_cyan] [yellow]{multiplier}x[/yellow]")
+    if stop_when_profit_reached and profit_target:
+        console.print(f"[bright_green]🎯 Take Profit:[/bright_green] [yellow]{profit_target} BUILD[/yellow]")
+    if stop_when_loss_reached and stop_loss_target:
+        console.print(f"[bright_red]🛑 Stop Loss:[/bright_red] [yellow]{stop_loss_target} BUILD[/yellow]")
+    console.print("")
+    console.print("[bold bright_green]✅ Hệ thống đã sẵn sàng! Bắt đầu phân tích...[/bold bright_green]")
+    console.print("")
 
     runm = safe_input("💯bạn đã sẵn sàng hãy nhấn enter để bắt đầu💯: ", default="AUTO")
     run_mode = str(runm).upper()
@@ -2479,6 +2523,14 @@ def parse_login():
         console.print(f"[bright_cyan]🔑 Secret:[/bright_cyan] [yellow]{SECRET_KEY[:8] if SECRET_KEY else 'N/A'}****[/yellow]")
         console.print("")
         
+        # Animation trước khi clear
+        import time
+        with console.status("[bold bright_green]✅ Chuẩn bị khởi động...[/bold bright_green]", spinner="dots"):
+            time.sleep(1)
+        
+        # Clear terminal sau khi login xong
+        clear_terminal()
+        
     except Exception as e:
         console.print("[red]❌ Link không hợp lệ. Thoát.[/red]")
         log_debug(f"parse_login err: {e}")
@@ -2486,16 +2538,10 @@ def parse_login():
 
 def main():
     parse_login()
-    
-    # Cyberpunk loading animation
-    console.print("")
-    with console.status("[bold bright_cyan blink]⚡ Khởi động Quantum Brain AI...[/bold bright_cyan blink]", spinner="dots"):
-        import time
-        time.sleep(2)
-    console.print("✅ [bright_green]Hệ thống đã sẵn sàng![/bright_green]\n")
+    # Login xong đã clear terminal rồi
     
     prompt_settings()
-    console.print("[bold green]Bắt đầu kết nối dữ liệu...[/bold green]")
+    # Config xong đã clear terminal và show banner rồi
 
     def on_balance_changed(bal, delta, info):
         console.print(f"[green]⤴️ cập nhật số dư: {bal:.4f} (Δ {delta:+.4f}) — {info.get('ts')}[/green]")
